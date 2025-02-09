@@ -1,1 +1,110 @@
-/* placeholder */
+/**********************************************************************************
+ * This file is part of the OK_JSON project. You can always find the latest
+ * version of this file and project at: https://github.com/ionux/ok_json/
+ *
+ * Copyright (c) 2025 Rich Morgan
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ **********************************************************************************/
+
+#include "okj_json.h"
+
+#include <ctype.h>
+#include <string.h>
+
+
+void okj_init(OkJsonParser *parser, const char *json_string)
+{
+    parser->json = json_string;
+
+    parser->position    = 0;
+    parser->token_count = 0;
+}
+
+static void okj_skip_whitespace(OkJsonParser *parser)
+{
+    while (isspace(parser->json[parser->position]))
+    {
+        parser->position++;
+    }
+}
+
+static int okj_parse_value(OkJsonParser *parser)
+{
+    okj_skip_whitespace(parser);
+
+    char c = parser->json[parser->position];
+    
+    if (c == '{')
+    {
+        parser->tokens[parser->token_count].type = JSON_OBJECT;
+    }
+    else if (c == '[')
+    {
+        parser->tokens[parser->token_count].type = JSON_ARRAY;
+    }
+    else if (c == '"')
+    {
+        parser->tokens[parser->token_count].type = JSON_STRING;
+    }
+    else if ((isdigit(c)) || (c == '-'))
+    {
+        parser->tokens[parser->token_count].type = JSON_NUMBER;
+    }
+    else if ((strncmp(&parser->json[parser->position], "true",  4) == 0)   ||
+             (strncmp(&parser->json[parser->position], "false", 5) == 0))
+    {
+        parser->tokens[parser->token_count].type = JSON_BOOLEAN;
+    }
+    else if (strncmp(&parser->json[parser->position], "null", 4) == 0)
+    {
+        parser->tokens[parser->token_count].type = JSON_NULL;
+    }
+    else
+    {
+        /* Error: invalid JSON */
+        return -1;
+    }
+
+    parser->tokens[parser->token_count].start = &parser->json[parser->position];
+
+    /* Placeholder, actual length needs to be determined. */
+    parser->tokens[parser->token_count].length = 1;
+
+    parser->position++;
+    parser->token_count++;
+
+    return 0;
+}
+
+int okj_parse(OkJsonParser *parser)
+{
+    okj_init(parser, parser->json);
+
+    while ((parser->json[parser->position] != '\0') && (parser->token_count < OKJ_MAX_TOKENS))
+    {
+        if (okj_parse_value(parser) != 0)
+        {
+            /* Parsing error */
+            return -1;
+        }
+    }
+    return 0;
+}

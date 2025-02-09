@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic -Iinclude
 
 SRC = src/ok_json.c
-TEST_SRC = src/ok_json_tests.c
+TEST_SRC = test/ok_json_tests.c
 OBJ = $(SRC:.c=.o)
 TEST_OBJ = $(TEST_SRC:.c=.o)
 

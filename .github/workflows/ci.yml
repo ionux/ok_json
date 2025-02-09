@@ -1,0 +1,22 @@
+name: OK_JSON Library CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get install -y build-essential valgrind
+
+      - name: Build library
+        run: make
+
+      - name: Run tests
+        run: make test
+
+      - name: Memory check with Valgrind
+        run: valgrind --leak-check=full ./tests/ok_json_test_runner

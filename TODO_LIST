@@ -1,0 +1,7 @@
+Items that I want/need to work on:
+
+* Properly extract string lengths (JSON_STRING needs end detection).
+* Handle nested structures (JSON_OBJECT, JSON_ARRAY tracking).
+* Validate syntax errors.
+* Improve tests.
+* Make code compliant safety-critical standards.

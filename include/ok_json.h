@@ -29,8 +29,11 @@
 
 #include <stdint.h>
 
-#define OKJ_MAX_TOKENS      32      /* Fixed-size token array       */
-#define OKJ_MAX_STRING_LEN  64      /* Maximum key or string length */
+/* Fixed-size token array       */
+#define OKJ_MAX_TOKENS      32
+
+/* Maximum key or string length */
+#define OKJ_MAX_STRING_LEN  64
 
 /* JSON Token Types */
 typedef enum

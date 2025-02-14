@@ -54,28 +54,28 @@ static int okj_parse_value(OkJsonParser *parser)
     
     if (c == '{')
     {
-        parser->tokens[parser->token_count].type = JSON_OBJECT;
+        parser->tokens[parser->token_count].type = OKJ_OBJECT;
     }
     else if (c == '[')
     {
-        parser->tokens[parser->token_count].type = JSON_ARRAY;
+        parser->tokens[parser->token_count].type = OKJ_ARRAY;
     }
     else if (c == '"')
     {
-        parser->tokens[parser->token_count].type = JSON_STRING;
+        parser->tokens[parser->token_count].type = OKJ_STRING;
     }
     else if ((isdigit(c)) || (c == '-'))
     {
-        parser->tokens[parser->token_count].type = JSON_NUMBER;
+        parser->tokens[parser->token_count].type = OKJ_NUMBER;
     }
     else if ((strncmp(&parser->json[parser->position], "true",  4) == 0)   ||
              (strncmp(&parser->json[parser->position], "false", 5) == 0))
     {
-        parser->tokens[parser->token_count].type = JSON_BOOLEAN;
+        parser->tokens[parser->token_count].type = OKJ_BOOLEAN;
     }
     else if (strncmp(&parser->json[parser->position], "null", 4) == 0)
     {
-        parser->tokens[parser->token_count].type = JSON_NULL;
+        parser->tokens[parser->token_count].type = OKJ_NULL;
     }
     else
     {
@@ -85,7 +85,7 @@ static int okj_parse_value(OkJsonParser *parser)
 
     parser->tokens[parser->token_count].start = &parser->json[parser->position];
 
-    /* Placeholder, actual length needs to be determined. */
+    /* TODO: Placeholder, actual length needs to be determined. */
     parser->tokens[parser->token_count].length = 1;
 
     parser->position++;
@@ -98,6 +98,7 @@ int okj_parse(OkJsonParser *parser)
 {
     okj_init(parser, parser->json);
 
+    /* TODO: What if the data legitmately contains the null char?  Is that possible? */
     while ((parser->json[parser->position] != '\0') && (parser->token_count < OKJ_MAX_TOKENS))
     {
         if (okj_parse_value(parser) != 0)

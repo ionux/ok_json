@@ -67,6 +67,23 @@ static int okj_parse_value(OkJsonParser *parser)
     else if ((isdigit(c)) || (c == '-'))
     {
         parser->tokens[parser->token_count].type = OKJ_NUMBER;
+
+        int start = parser->position;
+
+        while ((isdigit(parser->json[++parser->position]))  ||
+               (parser->json[parser->position] == '.'))
+        {
+            /* Intentionally empty */
+        }
+
+        /* A number cannot end with '.' */
+        if (parser->json[parser->position - 1] == '.')
+        {
+            return JSON_ERROR_SYNTAX;
+        }
+
+        parser->tokens[parser->token_count].length = parser->position - start;
+        
     }
     else if ((strncmp(&parser->json[parser->position], "true",  4) == 0)   ||
              (strncmp(&parser->json[parser->position], "false", 5) == 0))

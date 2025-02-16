@@ -26,6 +26,7 @@
 
 #include "okj_json.h"
 
+/* TODO: Remove dependency on these headers: */
 #include <ctype.h>
 #include <string.h>
 
@@ -48,6 +49,8 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 
 static int okj_parse_value(OkJsonParser *parser)
 {
+    /* TODO: Refactor to use only one return. */
+    
     okj_skip_whitespace(parser);
 
     char c = parser->json[parser->position];
@@ -79,7 +82,7 @@ static int okj_parse_value(OkJsonParser *parser)
         /* A number cannot end with '.' */
         if (parser->json[parser->position - 1] == '.')
         {
-            return JSON_ERROR_SYNTAX;
+            return OKJ_ERROR_BAD_NUMBER;
         }
 
         parser->tokens[parser->token_count].length = parser->position - start;
@@ -97,7 +100,7 @@ static int okj_parse_value(OkJsonParser *parser)
     else
     {
         /* Error: invalid JSON */
-        return -1;
+        return OKJ_ERROR_SYNTAX;
     }
 
     parser->tokens[parser->token_count].start = &parser->json[parser->position];
@@ -108,7 +111,7 @@ static int okj_parse_value(OkJsonParser *parser)
     parser->position++;
     parser->token_count++;
 
-    return 0;
+    return OKJ_SUCCESS;
 }
 
 int okj_parse(OkJsonParser *parser)
@@ -121,8 +124,9 @@ int okj_parse(OkJsonParser *parser)
         if (okj_parse_value(parser) != 0)
         {
             /* Parsing error */
-            return -1;
+            return OKJ_ERROR_PARSING_FAILED;
         }
     }
-    return 0;
+    
+    return OKJ_SUCCESS;
 }

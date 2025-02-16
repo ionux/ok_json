@@ -42,18 +42,25 @@
 #define OKJ_MAX_OBJECT_SIZE  64
 
 /* JSON Error Codes */
-typedef enum {
-    OKJ_SUCCESS = 0,
-    OKJ_ERROR_INVALID_CHARACTER = 1,
-    OKJ_ERROR_SYNTAX = 2,
-    OKJ_ERROR_OVERFLOW = 3,
-    OKJ_ERROR_UNEXPECTED_END = 4,
-    OKJ_ERROR_MAX_TOKENS_EXCEEDED = 5,
+typedef enum
+{
+    OKJ_SUCCESS                    = 0,
+    OKJ_ERROR_INVALID_CHARACTER    = 1,
+    OKJ_ERROR_SYNTAX               = 2,
+    OKJ_ERROR_OVERFLOW             = 3,
+    OKJ_ERROR_UNEXPECTED_END       = 4,
+    OKJ_ERROR_MAX_TOKENS_EXCEEDED  = 5,
     OKJ_ERROR_MAX_STR_LEN_EXCEEDED = 6,
-    OKJ_ERROR_BAD_POINTER = 7,
-    OKJ_ERROR_NULL_PARSER_OBJ = 8,
-    OKJ_ERROR_INVALID_TYPE_ENUM = 9,
-    OKJ_ERROR_NO_FREE_SPACE = 99,
+    OKJ_ERROR_BAD_POINTER          = 7,
+    OKJ_ERROR_BAD_NUMBER           = 8,
+    OKJ_ERROR_BAD_OBJECT           = 9,
+    OKJ_ERROR_BAD_STRING           = 10,
+    OKJ_ERROR_BAD_ARRAY            = 11,
+    OKJ_ERROR_BAD_BOOLEAN          = 12,
+    OKJ_ERROR_NULL_PARSER_OBJ      = 13,
+    OKJ_ERROR_INVALID_TYPE_ENUM    = 14,
+    OKJ_ERROR_NO_FREE_SPACE        = 15,
+    OKJ_ERROR_PARSING_FAILED       = 16
 } OkjError;
 
 /* JSON Token Types */

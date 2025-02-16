@@ -30,10 +30,31 @@
 #include <stdint.h>
 
 /* Fixed-size token array       */
-#define OKJ_MAX_TOKENS      32
+#define OKJ_MAX_TOKENS      128
 
 /* Maximum key or string length */
 #define OKJ_MAX_STRING_LEN  64
+
+/* Maximum size of array to process */
+#define OKJ_MAX_ARRAY_SIZE  64
+
+/* Maximum size of array to process */
+#define OKJ_MAX_OBJECT_SIZE  64
+
+/* JSON Error Codes */
+typedef enum {
+    OKJ_SUCCESS = 0,
+    OKJ_ERROR_INVALID_CHARACTER = 1,
+    OKJ_ERROR_SYNTAX = 2,
+    OKJ_ERROR_OVERFLOW = 3,
+    OKJ_ERROR_UNEXPECTED_END = 4,
+    OKJ_ERROR_MAX_TOKENS_EXCEEDED = 5,
+    OKJ_ERROR_MAX_STR_LEN_EXCEEDED = 6,
+    OKJ_ERROR_BAD_POINTER = 7,
+    OKJ_ERROR_NULL_PARSER_OBJ = 8,
+    OKJ_ERROR_INVALID_TYPE_ENUM = 9,
+    OKJ_ERROR_NO_FREE_SPACE = 99,
+} OkjError;
 
 /* JSON Token Types */
 typedef enum
@@ -55,6 +76,41 @@ typedef struct
     int length;       /* Token length in bytes                    */
 } OkJsonToken;
 
+/* JSON Object Structure */
+typedef struct
+{
+    char *start;      /* Pointer to start of token in JSON string */
+    int count;        /* Total count of object members            */
+} OkJsonObject;
+
+/* JSON Array Structure */
+typedef struct
+{
+    char *start;      /* Pointer to start of token in JSON string */
+    int count;        /* Total count of array elements            */
+} OkJsonArray;
+
+/* JSON Boolean Structure */
+typedef struct
+{
+    char *start;      /* Pointer to start of token in JSON string */
+    int length;       /* Size of boolean in bytes                 */
+} OkJsonBoolean;
+
+/* JSON Number Structure */
+typedef struct
+{
+    char *start;      /* Pointer to start of token in JSON string */
+    int length;       /* Size of boolean in bytes                 */
+} OkJsonNumber;
+
+/* JSON String Structure */
+typedef struct
+{
+    char *start;      /* Pointer to start of token in JSON string */
+    int length;       /* Size of string in bytes                  */
+} OkJsonString;
+
 /* JSON Parser Structure */
 typedef struct
 {
@@ -68,7 +124,10 @@ typedef struct
 void okj_init(OkJsonParser *parser, const char *json_string);
 int okj_parse(OkJsonParser *parser);
 const char *okj_get_string(OkJsonParser *parser, const char *key);
-int okj_get_int(OkJsonParser *parser, const char *key);
+int okj_get_number(OkJsonParser *parser, const char *key);
 int okj_get_boolean(OkJsonParser *parser, const char *key);
+int okj_get_array(OkJsonParser *parser, const char *key);
+int okj_get_object(OkJsonParser *parser, const char *key);
+int okj_get_token(OkJsonParser *parser, const char *key);
 
 #endif  /* OK_JSON_H */

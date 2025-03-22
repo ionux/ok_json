@@ -29,6 +29,7 @@
 /* TODO: Remove dependency on these headers: */
 #include <ctype.h>
 #include <string.h>
+#include "ok_json.h"
 
 
 void okj_init(OkJsonParser *parser, const char *json_string)
@@ -71,7 +72,7 @@ static int okj_parse_value(OkJsonParser *parser)
     {
         parser->tokens[parser->token_count].type = OKJ_NUMBER;
 
-        int start = parser->position;
+        uint16_t start = parser->position;
 
         while ((isdigit(parser->json[++parser->position]))  ||
                (parser->json[parser->position] == '.'))
@@ -116,6 +117,8 @@ static int okj_parse_value(OkJsonParser *parser)
 
 int okj_parse(OkJsonParser *parser)
 {
+    /* TODO: Refactor to use only one return. */
+
     okj_init(parser, parser->json);
 
     /* TODO: What if the data legitmately contains the null char?  Is that possible? */
@@ -129,4 +132,40 @@ int okj_parse(OkJsonParser *parser)
     }
     
     return OKJ_SUCCESS;
+}
+
+OkJsonString *okj_get_string(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
+}
+
+OkJsonNumber *okj_get_number(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
+}
+
+OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
+}
+
+OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
+}
+
+OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
+}
+
+OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key)
+{
+    /* TODO: stub */
+    return NULL;
 }

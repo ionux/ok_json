@@ -27,21 +27,43 @@
 #ifndef OK_JSON_H
 #define OK_JSON_H
 
+/**
+ * @brief If you prefer to use the types defined in your platform's stdint.h, uncomment
+ * this define.  Otherwise, we'll define our own types per MISRA C2012 Dir 4.6.
+ * #define OK_JSON_USE_STDINT_H
+ **/
+#ifdef OK_JSON_USE_STDINT_H
 #include <stdint.h>
+#else
+typedef unsigned long long uint64_t;
+typedef unsigned int       uint32_t;
+typedef unsigned short     uint16_t;
+typedef unsigned char      uint8_t;
+#endif
 
-/* Fixed-size token array       */
-#define OKJ_MAX_TOKENS      128
+/**
+ * @brief Fixed-size token array
+ **/
+static const uint16_t OKJ_MAX_TOKENS = 128U;
 
-/* Maximum key or string length */
-#define OKJ_MAX_STRING_LEN  64
+/**
+ * @brief Maximum key or string length
+ **/
+static const uint16_t OKJ_MAX_STRING_LEN = 64U;
 
-/* Maximum size of array to process */
-#define OKJ_MAX_ARRAY_SIZE  64
+/**
+ * @brief Maximum size of array to process
+ **/
+static const uint16_t OKJ_MAX_ARRAY_SIZE = 64U;
 
-/* Maximum size of array to process */
-#define OKJ_MAX_OBJECT_SIZE  64
+/**
+ * @brief Maximum size of array to process
+ **/
+static const uint16_t OKJ_MAX_OBJECT_SIZE = 64U;
 
-/* JSON Error Codes */
+/**
+ * @brief OK_JSON error/return codes
+ **/
 typedef enum
 {
     OKJ_SUCCESS                    = 0,
@@ -63,7 +85,9 @@ typedef enum
     OKJ_ERROR_PARSING_FAILED       = 16
 } OkjError;
 
-/* JSON Token Types */
+/**
+ * @brief OK_JSON token types
+ **/
 typedef enum
 {
     OKJ_UNDEFINED,
@@ -75,66 +99,135 @@ typedef enum
     OKJ_NULL
 } OkJsonType;
 
-/* JSON Token Structure */
+/**
+ * @brief OK_JSON token structure
+ **/
 typedef struct
 {
     OkJsonType type;
-    char *start;      /* Pointer to start of token in JSON string */
-    int length;       /* Token length in bytes                    */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t length;       /* Token length in bytes                    */
 } OkJsonToken;
 
-/* JSON Object Structure */
+/**
+ * @brief OK_JSON object structure
+ **/
 typedef struct
 {
-    char *start;      /* Pointer to start of token in JSON string */
-    int count;        /* Total count of object members            */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t count;        /* Total count of object members            */
 } OkJsonObject;
 
-/* JSON Array Structure */
+/**
+ * @brief JSON array structure
+ **/
 typedef struct
 {
-    char *start;      /* Pointer to start of token in JSON string */
-    int count;        /* Total count of array elements            */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t count;        /* Total count of array elements            */
 } OkJsonArray;
 
-/* JSON Boolean Structure */
+/**
+ * @brief OK_JSON boolean structure
+ **/
 typedef struct
 {
-    char *start;      /* Pointer to start of token in JSON string */
-    int length;       /* Size of boolean in bytes                 */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t length;       /* Size of boolean in bytes                 */
 } OkJsonBoolean;
 
-/* JSON Number Structure */
+/**
+ * @brief OK_JSON number structure
+ **/
 typedef struct
 {
-    char *start;      /* Pointer to start of token in JSON string */
-    int length;       /* Size of boolean in bytes                 */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t length;       /* Size of boolean in bytes                 */
 } OkJsonNumber;
 
-/* JSON String Structure */
+/**
+ * @brief OK_JSON string structure
+ **/
 typedef struct
 {
-    char *start;      /* Pointer to start of token in JSON string */
-    int length;       /* Size of string in bytes                  */
+    char *start;           /* Pointer to start of token in JSON string */
+    uint16_t length;       /* Size of string in bytes                  */
 } OkJsonString;
 
-/* JSON Parser Structure */
+/**
+ * @brief OK_JSON parser structure
+ **/
 typedef struct
 {
-    OkJsonToken tokens[OKJ_MAX_TOKENS];  /* Fixed-size token storage     */
-    int token_count;                     /* Number of parsed tokens      */
-    const char *json;                    /* Pointer to input JSON string */
-    int position;                        /* Current parsing position     */
+    OkJsonToken tokens[OKJ_MAX_TOKENS];      /* Fixed-size token storage     */
+    uint16_t token_count;                    /* Number of parsed tokens      */
+    const char *json;                        /* Pointer to input JSON string */
+    uint16_t position;                       /* Current parsing position     */
 } OkJsonParser;
 
 
+/**
+ * @brief OK_JSON initialization routine
+ *
+ * @param parser Pointer to the main ok_json parser object
+ * @param json_string Character stream of data you want to parse 
+ **/
 void okj_init(OkJsonParser *parser, const char *json_string);
-int okj_parse(OkJsonParser *parser);
-const char *okj_get_string(OkJsonParser *parser, const char *key);
-int okj_get_number(OkJsonParser *parser, const char *key);
-int okj_get_boolean(OkJsonParser *parser, const char *key);
-int okj_get_array(OkJsonParser *parser, const char *key);
-int okj_get_object(OkJsonParser *parser, const char *key);
-int okj_get_token(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief OK_JSON parse routine
+ *
+ * @param parser Pointer to the main ok_json parser object
+ * @return OkjError OK_JSON error code result of the operation
+ **/
+OkjError okj_parse(OkJsonParser *parser);
+
+/**
+ * @brief 
+ * @param parser Pointer to the main ok_json parser object
+ * @param key 
+ * @return OkJsonString
+ **/
+OkJsonString *okj_get_string(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief 
+ * @param parser 
+ * @param key 
+ * @return OkJsonNumber
+ **/
+OkJsonNumber *okj_get_number(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief 
+ * @param parser 
+ * @param key 
+ * @return OkJsonBoolean
+ **/
+OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief 
+ * @param parser 
+ * @param key 
+ * @return OkJsonArray
+ **/
+OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief 
+ * @param parser 
+ * @param key 
+ * @return OkJsonObject
+ **/
+OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief 
+ * @param parser 
+ * @param key 
+ * @return OkJsonToken
+ **/
+OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key);
 
 #endif  /* OK_JSON_H */

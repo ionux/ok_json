@@ -24,10 +24,14 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  **********************************************************************************/
 
+#include "../include/ok_json.h"
+
 #include <stdio.h>
 #include <assert.h>
-#include "../include/json.h"
 
+void test_parse_simple_object(void);
+void test_parse_array(void);
+void test_invalid_json(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -38,72 +42,81 @@
  * Rich M.
  */
 
-void test_parse_simple_object()
+void test_parse_simple_object(void)
 {
     /* Parse a basic JSON object and test for two things:
      *   - Ensure parsing succeeds
      *   - Parse the correct number of objects (two, in this case)
      */
         
-    OkJson parser;
+    OkJsonParser parser;
     char json_str[] = "{\"key\": 42}";
     
-    int result = okj_parse(&parser, json_str);
+    okj_init(&parser, json_str);
 
-    assert(result == 0); 
+    OkjError result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS); 
     assert(parser.token_count == 2);
 
-    assert(parser.tokens[0].type == JSON_OBJECT);
-    assert(parser.tokens[1].type == JSON_NUMBER);
+    assert(parser.tokens[0].type == OKJ_OBJECT);
+    assert(parser.tokens[1].type == OKJ_NUMBER);
 
     printf("✅ test_parse_simple_object passed!\n");
 }
 
-void test_parse_array()
+void test_parse_array(void)
 {
     /* Parse a basic JSON array and test for two things:
      *   - Ensure parsing succeeds
      *   - Parse the correct number of elements (four, in this case)
      */
 
-    OkJson parser;
+    OkJsonParser parser;
     char json_str[] = "[1, 2, 3]";
 
-    int result = okj_parse(&parser, json_str);
+    okj_init(&parser, json_str);
 
-    assert(result == 0);
+    OkjError result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
     assert(parser.token_count == 4); /* 3 numbers + array itself */
 
-    assert(parser.tokens[0].type == JSON_ARRAY);
-    assert(parser.tokens[1].type == JSON_NUMBER);
-    assert(parser.tokens[2].type == JSON_NUMBER);
-    assert(parser.tokens[3].type == JSON_NUMBER);
+    assert(parser.tokens[0].type == OKJ_ARRAY);
+    assert(parser.tokens[1].type == OKJ_NUMBER);
+    assert(parser.tokens[2].type == OKJ_NUMBER);
+    assert(parser.tokens[3].type == OKJ_NUMBER);
 
     printf("✅ test_parse_array passed!\n");
 }
 
-void test_invalid_json()
+void test_invalid_json(void)
 {
     /* Attempt to parse an invalid JSON object and check for one thing:
      *   - Ensure parsing fails
      */
     
-    OkJson parser;
+    OkJsonParser parser;
     char json_str[] = "{key: 42}"; /* Invalid: missing quotes */
 
-    int result = okj_parse(&parser, json_str);
-    assert(result != 0); /* Expect failure */
+    okj_init(&parser, json_str);
+
+    OkjError result = okj_parse(&parser);
+    assert(result != OKJ_SUCCESS); /* Expect failure */
 
     printf("✅ test_invalid_json passed!\n");
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    (void)argc;
+    (void)argv;
+    
     test_parse_simple_object();
     test_parse_array();
     test_invalid_json();
 
-    printf("All tests passed!\n");
+    printf("All OK_JSON tests passed!\n");
 
     return 0;
 }

@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Test artifacts
+test/ok_json_test_runner
+
+# Editor settings
+.vscode/*

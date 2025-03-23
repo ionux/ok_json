@@ -62,6 +62,20 @@ static const uint16_t OKJ_MAX_ARRAY_SIZE = 64U;
 static const uint16_t OKJ_MAX_OBJECT_SIZE = 64U;
 
 /**
+ * @brief Array of all valid ASCII characters for string processing
+ **/
+static const char OKJ_VALID_CHARS[96] = {
+        ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+',
+        ',', '-', '.', '/', '0', '1', '2',  '3', '4', '5', '6', '7',
+        '8', '9', ':', ';', '<', '=', '>',  '?', '@', 'A', 'B', 'C',
+        'D', 'E', 'F', 'G', 'H', 'I', 'J',  'K', 'L', 'M', 'N', 'O',
+        'P', 'Q', 'R', 'S', 'T', 'U', 'V',  'W', 'X', 'Y', 'Z', '[',
+        '\\',']', '^', '_', '`', 'a', 'b',  'c', 'd', 'e', 'f', 'g',
+        'h', 'i', 'j', 'k', 'l', 'm', 'n',  'o', 'p', 'q', 'r', 's',
+        't', 'u', 'v', 'w', 'x', 'y', 'z',  '{', '|', '}', '~', '\0'
+};
+
+/**
  * @brief OK_JSON error/return codes
  **/
 typedef enum
@@ -142,7 +156,7 @@ typedef struct
 typedef struct
 {
     char *start;           /* Pointer to start of token in JSON string */
-    uint16_t length;       /* Size of boolean in bytes                 */
+    uint16_t length;       /* Size of number in bytes                  */
 } OkJsonNumber;
 
 /**
@@ -161,7 +175,7 @@ typedef struct
 {
     OkJsonToken tokens[OKJ_MAX_TOKENS];      /* Fixed-size token storage     */
     uint16_t token_count;                    /* Number of parsed tokens      */
-    const char *json;                        /* Pointer to input JSON string */
+    char *json;                              /* Pointer to input JSON string */
     uint16_t position;                       /* Current parsing position     */
 } OkJsonParser;
 
@@ -172,7 +186,7 @@ typedef struct
  * @param parser Pointer to the main ok_json parser object
  * @param json_string Character stream of data you want to parse 
  **/
-void okj_init(OkJsonParser *parser, const char *json_string);
+void okj_init(OkJsonParser *parser, char *json_string);
 
 /**
  * @brief OK_JSON parse routine

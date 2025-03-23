@@ -44,7 +44,8 @@ typedef unsigned char      uint8_t;
 /**
  * @brief Fixed-size token array
  **/
-static const uint16_t OKJ_MAX_TOKENS = 128U;
+#define OKJ_MAX_TOKENS 128U
+/* static const uint16_t OKJ_MAX_TOKENS = 128U; */
 
 /**
  * @brief Maximum key or string length

@@ -71,7 +71,7 @@ and merge your code.
 
 ## License
 
-MIT License — Copyright (c) 2025 Rich Morgan
+Copyright (c) 2026 Rich Morgan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -46,21 +46,22 @@ void test_parse_simple_object(void)
 {
     /* Parse a basic JSON object and test for two things:
      *   - Ensure parsing succeeds
-     *   - Parse the correct number of objects (two, in this case)
+     *   - Parse the correct number of tokens (three: container, key, value)
      */
-        
+
     OkJsonParser parser;
     char json_str[] = "{\"key\": 42}";
-    
+
     okj_init(&parser, json_str);
 
     OkjError result = okj_parse(&parser);
 
-    assert(result == OKJ_SUCCESS); 
-    assert(parser.token_count == 2);
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 3);
 
     assert(parser.tokens[0].type == OKJ_OBJECT);
-    assert(parser.tokens[1].type == OKJ_NUMBER);
+    assert(parser.tokens[1].type == OKJ_STRING);   /* "key"  */
+    assert(parser.tokens[2].type == OKJ_NUMBER);   /* 42     */
 
     printf("✅ test_parse_simple_object passed!\n");
 }

@@ -2,7 +2,7 @@
  * This file is part of the OK_JSON project. You can always find the latest
  * version of this file and project at: https://github.com/ionux/ok_json/
  *
- * Copyright (c) 2025 Rich Morgan
+ * Copyright (c) 2026 Rich Morgan
  *
  * The MIT License (MIT)
  *

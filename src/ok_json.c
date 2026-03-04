@@ -247,6 +247,13 @@ OkjError okj_parse(OkJsonParser *parser)
         }
     }
 
+    if (result == OKJ_SUCCESS                      &&
+        parser->token_count >= OKJ_MAX_TOKENS      &&
+        parser->json[parser->position] != '\0')
+    {
+        result = OKJ_ERROR_MAX_TOKENS_EXCEEDED;
+    }
+
     return result;
 }
 

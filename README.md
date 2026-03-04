@@ -1,24 +1,75 @@
 # ok_json
 
-
 ## Description
-!!!!This is a Work In Progress!!!!
 
-Simple, light and clean JSON parser suitable for embedded, memory-constrained and safety-critical projects.  The codebase will be in pure C99 for the highest compatibility with the most embedded project types and will comply with safety-critical coding standards (MISRA, etc.).
+Simple, light, and clean JSON parser suitable for embedded, memory-constrained,
+and safety-critical projects. Written in pure C99 for maximum portability.
+Zero external library dependencies (`stdio.h`, `string.h`, and `ctype.h` are
+not used). Designed with safety-critical coding standards (MISRA C2012) in mind.
 
+## Quick Start
+
+```c
+#include "ok_json.h"
+
+/* 1. Declare a parser and a mutable JSON string */
+OkJsonParser parser;
+char json[] = "{\"temp\": 42, \"unit\": \"C\", \"valid\": true}";
+
+/* 2. Initialise and parse */
+okj_init(&parser, json);
+if (okj_parse(&parser) != OKJ_SUCCESS) {
+    /* handle parse error */
+}
+
+/* 3. Retrieve values by key */
+OkJsonNumber  *temp  = okj_get_number(&parser,  "temp");
+OkJsonString  *unit  = okj_get_string(&parser,  "unit");
+OkJsonBoolean *valid = okj_get_boolean(&parser, "valid");
+
+if (temp  != NULL) { /* temp->start points to "42", temp->length == 2  */ }
+if (unit  != NULL) { /* unit->start points to "C",  unit->length == 1  */ }
+if (valid != NULL) { /* valid->start points to "true", valid->length == 4 */ }
+```
+
+All getter functions return `NULL` when the key is not found or when the value
+type does not match the requested type.
+
+## Building
+
+```sh
+make        # builds ok_json.a and runs the test suite
+make clean  # removes build artifacts
+```
+
+Requires a C99-capable compiler. Tested with GCC using
+`-Wall -Wextra -Werror -pedantic`.
+
+## Limits
+
+| Constant            | Default | Description                  |
+|---------------------|---------|------------------------------|
+| `OKJ_MAX_TOKENS`    | 128     | Maximum tokens per parse     |
+| `OKJ_MAX_STRING_LEN`| 64      | Maximum key/string length    |
+| `OKJ_MAX_ARRAY_SIZE`| 64      | Maximum array element count  |
+| `OKJ_MAX_OBJECT_SIZE`| 64     | Maximum object member count  |
+
+All limits are compile-time constants.
 
 ## Contributing
-If you've found a bug or improvement, feel free to submit an update!  Here's how to do it for this project:
-* Create a new branch off master for your changes.
-* Clone the repository to your local development machine.
-* Change to your new branch, make the updates & save the files.
-* Add, commit & push your changes back to the repository.
-* Create a new merge request so I can review your code.
-* Once everything looks good and there are no errors or formatting issues, I'll approve & merge your code!
 
+If you've found a bug or improvement, feel free to submit an update! Here's how:
+
+1. Create a new branch off master for your changes.
+2. Clone the repository to your local development machine.
+3. Make your updates and save the files.
+4. Add, commit, and push your changes back to the repository.
+5. Create a new merge request so I can review your code.
+
+Once everything looks good with no errors or formatting issues, I'll approve
+and merge your code.
 
 ## License
-MIT License
 
 Copyright (c) 2026 Rich Morgan
 

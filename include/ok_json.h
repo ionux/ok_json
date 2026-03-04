@@ -42,10 +42,10 @@ typedef unsigned char      uint8_t;
 #endif
 
 /**
- * @brief Fixed-size token array
+ * @brief Fixed-size token array limit. Defined as a preprocessor macro so it
+ * can be used as an array dimension in struct definitions.
  **/
 #define OKJ_MAX_TOKENS 128U
-/* static const uint16_t OKJ_MAX_TOKENS = 128U; */
 
 /**
  * @brief Maximum key or string length
@@ -198,50 +198,69 @@ void okj_init(OkJsonParser *parser, char *json_string);
 OkjError okj_parse(OkJsonParser *parser);
 
 /**
- * @brief 
+ * @brief Retrieve the string value associated with a key in a parsed object.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns the immediately following token cast to OkJsonString.
  * @param parser Pointer to the main ok_json parser object
- * @param key 
- * @return OkJsonString
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonString containing start and length of the
+ *         string content (quotes excluded), or NULL if not found or type mismatch
  **/
 OkJsonString *okj_get_string(OkJsonParser *parser, const char *key);
 
 /**
- * @brief 
- * @param parser 
- * @param key 
- * @return OkJsonNumber
+ * @brief Retrieve the number value associated with a key in a parsed object.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns the immediately following token cast to OkJsonNumber.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonNumber containing start and length of the
+ *         numeric text, or NULL if not found or type mismatch
  **/
 OkJsonNumber *okj_get_number(OkJsonParser *parser, const char *key);
 
 /**
- * @brief 
- * @param parser 
- * @param key 
- * @return OkJsonBoolean
+ * @brief Retrieve the boolean value associated with a key in a parsed object.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns the immediately following token cast to OkJsonBoolean.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonBoolean containing start and length of the
+ *         boolean literal ("true" or "false"), or NULL if not found or type mismatch
  **/
 OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key);
 
 /**
- * @brief 
- * @param parser 
- * @param key 
- * @return OkJsonArray
+ * @brief Retrieve the array value associated with a key in a parsed object.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns the immediately following token cast to OkJsonArray.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonArray containing start of the array, or
+ *         NULL if not found or type mismatch
  **/
 OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key);
 
 /**
- * @brief 
- * @param parser 
- * @param key 
- * @return OkJsonObject
+ * @brief Retrieve the object value associated with a key in a parsed object.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns the immediately following token cast to OkJsonObject.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonObject containing start of the object, or
+ *         NULL if not found or type mismatch
  **/
 OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key);
 
 /**
- * @brief 
- * @param parser 
- * @param key 
- * @return OkJsonToken
+ * @brief Retrieve the raw token for the value associated with a key.
+ *        Scans the token array for a STRING token whose content matches @p key,
+ *        then returns a pointer directly into the parser's token array for the
+ *        immediately following token.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to the OkJsonToken in the parser's token array, or NULL if
+ *         not found
  **/
 OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key);
 

@@ -1,7 +1,6 @@
 Items that I want/need to work on:
 
-* Properly extract string lengths (JSON_STRING needs end detection).
-* Handle nested structures (JSON_OBJECT, JSON_ARRAY tracking).
-* Validate syntax errors.
-* Improve tests.
-* Make code compliant safety-critical standards.
+* Make code fully compliant with safety-critical standards (MISRA C2012).
+  Current status: zero stdlib dependencies achieved, single-return applied to
+  okj_parse().  Full MISRA compliance requires a MISRA-capable toolchain and
+  formal analysis; deferred post-MVP.

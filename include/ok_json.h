@@ -42,6 +42,14 @@ typedef unsigned char      uint8_t;
 #endif
 
 /**
+ * @brief NULL is part of the C standard but lives in stddef.h which we avoid
+ * pulling in.  Define it here if the platform header hasn't provided it.
+ **/
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+/**
  * @brief Fixed-size token array limit. Defined as a preprocessor macro so it
  * can be used as an array dimension in struct definitions.
  **/

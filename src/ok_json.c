@@ -26,11 +26,6 @@
 
 #include "../include/ok_json.h"
 
-/* NULL is part of the C standard but lives in stddef.h which we avoid
- * pulling in.  Define it here if the platform header hasn't provided it. */
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
 /* ---------------------------------------------------------------------------
  * Internal helpers — no external library dependencies

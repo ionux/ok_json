@@ -47,6 +47,8 @@ void test_get_object_count(void);
 void test_string_too_long(void);
 void test_escaped_quote_in_string(void);
 void test_escaped_backslash_in_string(void);
+void test_array_too_large(void);
+void test_object_too_large(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -466,6 +468,123 @@ void test_escaped_backslash_in_string(void)
     printf("test_escaped_backslash_in_string passed!\n");
 }
 
+void test_array_too_large(void)
+{
+    /* Build {"items": [1,1,...,1]} with 65 elements — one more than
+     * OKJ_MAX_ARRAY_SIZE (64).  Parsing must succeed (only 68 tokens are
+     * needed), but okj_get_array() must return NULL because the element
+     * count exceeds the configured limit. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    OkJsonArray *arr;
+
+    /* Buffer: {"items": [  65 ones with 64 commas  ]}  + NUL
+     *   10 + (65 + 64) + 2 + 1 = 142 bytes             */
+    char     json_str[142];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'i';
+    json_str[pos++] = 't';
+    json_str[pos++] = 'e';
+    json_str[pos++] = 'm';
+    json_str[pos++] = 's';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '[';
+
+    for (i = 0U; i < 65U; i++)
+    {
+        if (i > 0U) { json_str[pos++] = ','; }
+        json_str[pos++] = '1';
+    }
+
+    json_str[pos++] = ']';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);     /* 68 tokens — well within limit */
+
+    arr = okj_get_array(&parser, "items");
+
+    assert(arr == NULL);               /* 65 > OKJ_MAX_ARRAY_SIZE(64)   */
+
+    printf("test_array_too_large passed!\n");
+}
+
+void test_object_too_large(void)
+{
+    /* Build {"data": {"k0":1,"k1":1,...,"k32":1}} — 33 members in the
+     * nested object, one more than OKJ_MAX_OBJECT_SIZE (32).  Parsing
+     * succeeds (69 tokens needed, within OKJ_MAX_TOKENS=128), but
+     * okj_get_object() must return NULL because the member count exceeds
+     * the configured limit. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    OkJsonObject *obj;
+
+    /* Worst-case size: 9 + 253 + 2 + 1 = 265 bytes (see comment below) */
+    char     json_str[265];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    /* Outer wrapper: {"data": { */
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'd';
+    json_str[pos++] = 'a';
+    json_str[pos++] = 't';
+    json_str[pos++] = 'a';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '{';
+
+    /* 33 members: "k0":1 … "k32":1 */
+    for (i = 0U; i < 33U; i++)
+    {
+        if (i > 0U) { json_str[pos++] = ','; }
+
+        json_str[pos++] = '"';
+        json_str[pos++] = 'k';
+
+        if (i < 10U)
+        {
+            json_str[pos++] = (char)('0' + (char)i);
+        }
+        else
+        {
+            json_str[pos++] = (char)('0' + (char)(i / 10U));
+            json_str[pos++] = (char)('0' + (char)(i % 10U));
+        }
+
+        json_str[pos++] = '"';
+        json_str[pos++] = ':';
+        json_str[pos++] = '1';
+    }
+
+    json_str[pos++] = '}';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);     /* 69 tokens — well within limit */
+
+    obj = okj_get_object(&parser, "data");
+
+    assert(obj == NULL);               /* 33 > OKJ_MAX_OBJECT_SIZE(32)  */
+
+    printf("test_object_too_large passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -489,6 +608,8 @@ int main(int argc, char* argv[])
     test_string_too_long();
     test_escaped_quote_in_string();
     test_escaped_backslash_in_string();
+    test_array_too_large();
+    test_object_too_large();
 
     printf("All OK_JSON tests passed!\n");
 

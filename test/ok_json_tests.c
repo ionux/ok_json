@@ -49,6 +49,12 @@ void test_escaped_quote_in_string(void);
 void test_escaped_backslash_in_string(void);
 void test_array_too_large(void);
 void test_object_too_large(void);
+void test_get_array_raw(void);
+void test_get_object_raw(void);
+void test_count_objects(void);
+void test_count_arrays(void);
+void test_count_elements(void);
+void test_debug_print(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -585,6 +591,123 @@ void test_object_too_large(void)
     printf("test_object_too_large passed!\n");
 }
 
+void test_get_array_raw(void)
+{
+    /* Parse an object containing an array and verify that okj_get_array_raw()
+     * returns the correct element count AND the full raw byte length of the
+     * array text (including surrounding brackets). */
+
+    OkJsonParser parser;
+    OkJsonArray *arr;
+
+    /* "[1, 2, 3]" = 9 bytes */
+    char json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array_raw(&parser, "items");
+
+    assert(arr != NULL);
+    assert(arr->count  == 3U);
+    assert(arr->start[0] == '[');
+    assert(arr->length == 9U);   /* [1, 2, 3] = 9 bytes */
+
+    printf("test_get_array_raw passed!\n");
+}
+
+void test_get_object_raw(void)
+{
+    /* Parse an object containing a nested object and verify that
+     * okj_get_object_raw() returns the correct member count AND the full raw
+     * byte length of the object text (including surrounding braces). */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+
+    /* {"a": 1} = 8 bytes */
+    char json_str[] = "{\"info\": {\"a\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object_raw(&parser, "info");
+
+    assert(obj != NULL);
+    assert(obj->count  == 1U);
+    assert(obj->start[0] == '{');
+    assert(obj->length == 8U);   /* {"a": 1} = 8 bytes */
+
+    printf("test_get_object_raw passed!\n");
+}
+
+void test_count_objects(void)
+{
+    /* Parse a JSON value that contains two object tokens (one outer, one
+     * nested) and verify that okj_count_objects() returns 2. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"a\": {\"b\": 1}, \"c\": 2}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    assert(okj_count_objects(&parser) == 2U);
+
+    printf("test_count_objects passed!\n");
+}
+
+void test_count_arrays(void)
+{
+    /* Parse a JSON value that contains two array tokens and verify that
+     * okj_count_arrays() returns 2. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"x\": [1, 2], \"y\": [3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    assert(okj_count_arrays(&parser) == 2U);
+
+    printf("test_count_arrays passed!\n");
+}
+
+void test_count_elements(void)
+{
+    /* Parse a simple object and verify that okj_count_elements() equals the
+     * total token count: 1 object + 1 string key + 1 number value = 3. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"key\": 42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    assert(okj_count_elements(&parser) == 3U);
+
+    printf("test_count_elements passed!\n");
+}
+
+void test_debug_print(void)
+{
+    /* Parse a JSON value and call okj_debug_print() to exercise the full
+     * token dump path.  Correctness is verified visually in the output;
+     * this test ensures no crash and no assertion failure. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"key\": 42, \"arr\": [1, 2]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+#ifdef OK_JSON_DEBUG
+    okj_debug_print(&parser);
+#endif
+
+    printf("test_debug_print passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -610,6 +733,12 @@ int main(int argc, char* argv[])
     test_escaped_backslash_in_string();
     test_array_too_large();
     test_object_too_large();
+    test_get_array_raw();
+    test_get_object_raw();
+    test_count_objects();
+    test_count_arrays();
+    test_count_elements();
+    test_debug_print();
 
     printf("All OK_JSON tests passed!\n");
 

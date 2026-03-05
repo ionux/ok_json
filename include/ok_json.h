@@ -141,6 +141,7 @@ typedef struct
 {
     char *start;           /* Pointer to start of token in JSON string */
     uint16_t count;        /* Total count of object members            */
+    uint16_t length;       /* Full raw text length including braces    */
 } OkJsonObject;
 
 /**
@@ -150,6 +151,7 @@ typedef struct
 {
     char *start;           /* Pointer to start of token in JSON string */
     uint16_t count;        /* Total count of array elements            */
+    uint16_t length;       /* Full raw text length including brackets  */
 } OkJsonArray;
 
 /**
@@ -273,5 +275,66 @@ OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key);
  *         not found
  **/
 OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief Retrieve the entire raw array value associated with a key.
+ *        Like okj_get_array() but also populates the @c length field with the
+ *        full byte count of the array text (including surrounding brackets) and
+ *        does NOT enforce OKJ_MAX_ARRAY_SIZE.  Use this when you need the
+ *        complete raw text of an array regardless of its element count.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonArray with start, count, and length
+ *         populated, or NULL if not found or type mismatch
+ **/
+OkJsonArray *okj_get_array_raw(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief Retrieve the entire raw object value associated with a key.
+ *        Like okj_get_object() but also populates the @c length field with the
+ *        full byte count of the object text (including surrounding braces) and
+ *        does NOT enforce OKJ_MAX_OBJECT_SIZE.  Use this when you need the
+ *        complete raw text of an object regardless of its member count.
+ * @param parser Pointer to the main ok_json parser object
+ * @param key    Null-terminated key name to look up
+ * @return Pointer to a static OkJsonObject with start, count, and length
+ *         populated, or NULL if not found or type mismatch
+ **/
+OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key);
+
+/**
+ * @brief Return the total number of OKJ_OBJECT tokens in the parsed result.
+ *        Counts every object opening brace that was tokenised, including
+ *        nested objects.
+ * @param parser Pointer to the main ok_json parser object
+ * @return Count of OKJ_OBJECT tokens, or 0 if @p parser is NULL
+ **/
+uint16_t okj_count_objects(OkJsonParser *parser);
+
+/**
+ * @brief Return the total number of OKJ_ARRAY tokens in the parsed result.
+ *        Counts every array opening bracket that was tokenised, including
+ *        nested arrays.
+ * @param parser Pointer to the main ok_json parser object
+ * @return Count of OKJ_ARRAY tokens, or 0 if @p parser is NULL
+ **/
+uint16_t okj_count_arrays(OkJsonParser *parser);
+
+/**
+ * @brief Return the total number of tokens (elements of any type) produced
+ *        by a successful parse.  Equivalent to @c parser->token_count.
+ * @param parser Pointer to the main ok_json parser object
+ * @return Total token count, or 0 if @p parser is NULL
+ **/
+uint16_t okj_count_elements(OkJsonParser *parser);
+
+/**
+ * @brief Print a human-readable debug dump of every token in @p parser to
+ *        stdout.  Only available when compiled with -DOK_JSON_DEBUG.
+ * @param parser Pointer to the main ok_json parser object
+ **/
+#ifdef OK_JSON_DEBUG
+void okj_debug_print(OkJsonParser *parser);
+#endif /* OK_JSON_DEBUG */
 
 #endif  /* OK_JSON_H */

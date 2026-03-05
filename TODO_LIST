@@ -4,3 +4,6 @@ Items that I want/need to work on:
   Current status: zero stdlib dependencies achieved, single-return applied to
   okj_parse().  Full MISRA compliance requires a MISRA-capable toolchain and
   formal analysis; deferred post-MVP.
+
+* Add more tests to check for more possible error conditions and various
+  input data.

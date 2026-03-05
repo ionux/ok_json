@@ -36,6 +36,14 @@ void test_get_string(void);
 void test_invalid_string(void);
 void test_get_number(void);
 void test_invalid_number(void);
+void test_number_negative(void);
+void test_number_float(void);
+void test_number_exponent(void);
+void test_number_zero_variants(void);
+void test_number_invalid_lone_minus(void);
+void test_number_invalid_leading_zero(void);
+void test_number_invalid_trailing_decimal(void);
+void test_number_invalid_exponent_no_digits(void);
 void test_get_boolean_true(void);
 void test_get_boolean_false(void);
 void test_invalid_boolean(void);
@@ -211,6 +219,195 @@ void test_invalid_number(void)
     assert(num == NULL);
 
     printf("test_invalid_number passed!\n");
+}
+
+void test_number_negative(void)
+{
+    /* Parse a negative integer and verify the token covers the minus sign
+     * and both digits. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json_str[] = "{\"n\": -42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 3U);      /* '-', '4', '2' */
+    assert(num->start[0] == '-');
+
+    printf("test_number_negative passed!\n");
+}
+
+void test_number_float(void)
+{
+    /* Parse positive and negative decimal numbers and verify token lengths. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json1[] = "{\"n\": 3.14}";
+    char json2[] = "{\"n\": -1.5}";
+
+    /* 3.14 */
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 4U);      /* '3', '.', '1', '4' */
+    assert(num->start[0] == '3');
+
+    /* -1.5 */
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 4U);      /* '-', '1', '.', '5' */
+    assert(num->start[0] == '-');
+
+    printf("test_number_float passed!\n");
+}
+
+void test_number_exponent(void)
+{
+    /* Parse numbers that use exponent notation (RFC 8259 §6).
+     * Both 'e' and 'E' forms, with and without an explicit sign, must
+     * be accepted and their full raw text captured in the token. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json1[] = "{\"n\": 1e10}";
+    char json2[] = "{\"n\": 2.5E-3}";
+    char json3[] = "{\"n\": 1E+2}";
+
+    /* 1e10 */
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 4U);      /* '1', 'e', '1', '0' */
+    assert(num->start[0] == '1');
+
+    /* 2.5E-3 */
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 6U);      /* '2', '.', '5', 'E', '-', '3' */
+    assert(num->start[0] == '2');
+
+    /* 1E+2 */
+    okj_init(&parser, json3);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 4U);      /* '1', 'E', '+', '2' */
+    assert(num->start[0] == '1');
+
+    printf("test_number_exponent passed!\n");
+}
+
+void test_number_zero_variants(void)
+{
+    /* Verify that bare zero and negative zero are both accepted. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json1[] = "{\"n\": 0}";
+    char json2[] = "{\"n\": -0}";
+
+    /* 0 */
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 1U);
+    assert(num->start[0] == '0');
+
+    /* -0 */
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    assert(num != NULL);
+    assert(num->length == 2U);
+    assert(num->start[0] == '-');
+
+    printf("test_number_zero_variants passed!\n");
+}
+
+void test_number_invalid_lone_minus(void)
+{
+    /* A bare '-' with no following digits is not a valid JSON number. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"n\": -}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
+
+    printf("test_number_invalid_lone_minus passed!\n");
+}
+
+void test_number_invalid_leading_zero(void)
+{
+    /* RFC 8259 §6 forbids a leading zero followed by another digit.
+     * "012" must be rejected; "0" alone or "0.5" are valid. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"n\": 012}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
+
+    printf("test_number_invalid_leading_zero passed!\n");
+}
+
+void test_number_invalid_trailing_decimal(void)
+{
+    /* A decimal point must be followed by at least one digit.
+     * "1." is not a valid JSON number. */
+
+    OkJsonParser parser;
+    char json_str[] = "{\"n\": 1.}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
+
+    printf("test_number_invalid_trailing_decimal passed!\n");
+}
+
+void test_number_invalid_exponent_no_digits(void)
+{
+    /* An exponent marker ('e'/'E') must be followed by at least one digit
+     * (after an optional sign).  Both "1e" and "1e+" must be rejected. */
+
+    OkJsonParser parser;
+    char json1[] = "{\"n\": 1e}";
+    char json2[] = "{\"n\": 1e+}";
+
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
+
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
+
+    printf("test_number_invalid_exponent_no_digits passed!\n");
 }
 
 void test_get_boolean_true(void)
@@ -849,6 +1046,14 @@ int main(int argc, char* argv[])
     test_invalid_string();
     test_get_number();
     test_invalid_number();
+    test_number_negative();
+    test_number_float();
+    test_number_exponent();
+    test_number_zero_variants();
+    test_number_invalid_lone_minus();
+    test_number_invalid_leading_zero();
+    test_number_invalid_trailing_decimal();
+    test_number_invalid_exponent_no_digits();
     test_get_boolean_true();
     test_get_boolean_false();
     test_invalid_boolean();

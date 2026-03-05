@@ -69,7 +69,7 @@ void test_parse_simple_object(void)
     assert(parser.tokens[1].type == OKJ_STRING);   /* "key"  */
     assert(parser.tokens[2].type == OKJ_NUMBER);   /* 42     */
 
-    printf("✅ test_parse_simple_object passed!\n");
+    printf("test_parse_simple_object passed!\n");
 }
 
 void test_parse_array(void)
@@ -94,7 +94,7 @@ void test_parse_array(void)
     assert(parser.tokens[2].type == OKJ_NUMBER);
     assert(parser.tokens[3].type == OKJ_NUMBER);
 
-    printf("✅ test_parse_array passed!\n");
+    printf("test_parse_array passed!\n");
 }
 
 void test_invalid_json(void)
@@ -111,7 +111,7 @@ void test_invalid_json(void)
     OkjError result = okj_parse(&parser);
     assert(result != OKJ_SUCCESS); /* Expect failure */
 
-    printf("✅ test_invalid_json passed!\n");
+    printf("test_invalid_json passed!\n");
 }
 
 void test_get_string(void)
@@ -132,7 +132,22 @@ void test_get_string(void)
     assert(str->length == 5U);       /* "Alice" is 5 characters */
     assert(str->start[0] == 'A');
 
-    printf("✅ test_get_string passed!\n");
+    printf("test_get_string passed!\n");
+}
+
+void test_invalid_string(void)
+{
+    /* Parse an object containing an invalid string value and verify that
+     * the operation fails. */
+
+    OkJsonParser  parser;
+    
+    char json_str[] = "{\"name\": Alice}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) != OKJ_SUCCESS);
+
+    printf("test_invalid_string passed!\n");
 }
 
 void test_get_number(void)
@@ -153,10 +168,29 @@ void test_get_number(void)
     assert(num->length == 2U);       /* "30" is 2 characters */
     assert(num->start[0] == '3');
 
-    printf("✅ test_get_number passed!\n");
+    printf("test_get_number passed!\n");
 }
 
-void test_get_boolean(void)
+void test_invalid_number(void)
+{
+    /* Parse an object containing an invalid number value and verify that
+     * the operation fails. */
+    
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json_str[] = "{\"age\": \"XYZ\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "age");
+
+    assert(num == NULL);
+
+    printf("test_invalid_number passed!\n");
+}
+
+void test_get_boolean_true(void)
 {
     /* Parse an object containing a boolean value and verify that
      * okj_get_boolean() returns the correct content and length. */
@@ -174,7 +208,49 @@ void test_get_boolean(void)
     assert(flag->length == 4U);      /* "true" is 4 characters */
     assert(flag->start[0] == 't');
 
-    printf("✅ test_get_boolean passed!\n");
+    printf("test_get_boolean_true passed!\n");
+}
+
+void test_get_boolean_false(void)
+{
+    /* Parse an object containing a boolean value and verify that
+     * okj_get_boolean() returns the correct content and length. */
+
+    OkJsonParser   parser;
+    OkJsonBoolean *flag;
+    char json_str[] = "{\"active\": false}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    flag = okj_get_boolean(&parser, "active");
+
+    assert(flag != NULL);
+    assert(flag->length == 5U);      /* "false" is 4 characters */
+    assert(flag->start[0] == 'f');
+
+    printf("test_get_boolean_false passed!\n");
+}
+
+void test_invalid_boolean(void)
+{
+    /* Parse an object containing a boolean value and verify that
+     * okj_get_boolean() returns the correct content and length. */
+
+    OkJsonParser   parser;
+    OkJsonBoolean *flag;
+    char json_str[] = "{\"active\": 42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    flag = okj_get_boolean(&parser, "active");
+
+    assert(flag != NULL);
+    assert(flag->length == 4U);      /* "true" is 4 characters */
+    assert(flag->start[0] == 't');
+
+    printf("test_invalid_boolean passed!\n");
 }
 
 void test_get_not_found(void)
@@ -197,7 +273,7 @@ void test_get_not_found(void)
     /* Key exists but type is NUMBER, not BOOLEAN */
     assert(okj_get_boolean(&parser, "key") == NULL);
 
-    printf("✅ test_get_not_found passed!\n");
+    printf("test_get_not_found passed!\n");
 }
 
 void test_max_tokens_exceeded(void)
@@ -228,7 +304,7 @@ void test_max_tokens_exceeded(void)
 
     assert(result == OKJ_ERROR_MAX_TOKENS_EXCEEDED);
 
-    printf("✅ test_max_tokens_exceeded passed!\n");
+    printf("test_max_tokens_exceeded passed!\n");
 }
 
 void test_truncated_string(void)
@@ -245,7 +321,7 @@ void test_truncated_string(void)
 
     assert(result != OKJ_SUCCESS);
 
-    printf("✅ test_truncated_string passed!\n");
+    printf("test_truncated_string passed!\n");
 }
 
 int main(int argc, char* argv[])

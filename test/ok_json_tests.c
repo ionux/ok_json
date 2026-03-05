@@ -250,9 +250,7 @@ void test_invalid_boolean(void)
 
     flag = okj_get_boolean(&parser, "active");
 
-    assert(flag != NULL);
-    assert(flag->length == 4U);      /* "true" is 4 characters */
-    assert(flag->start[0] == 't');
+    assert(flag == NULL);
 
     printf("test_invalid_boolean passed!\n");
 }

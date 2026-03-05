@@ -491,29 +491,99 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     }
     else if ((okj_is_digit(c)) || (c == '-'))
     {
+        uint8_t number_ok = 1U;
+
         tok        = &parser->tokens[parser->token_count];
         tok->type  = OKJ_NUMBER;
         tok->start = &parser->json[parser->position];
 
         start_pos  = parser->position;
 
-        parser->position++;
-
-        while ((okj_is_digit(parser->json[parser->position])) ||
-               (parser->json[parser->position] == '.'))
+        /* Step 1: optional leading minus */
+        if (c == '-')
         {
-            parser->position++;
+            parser->position++;     /* consume '-' */
+
+            if (okj_is_digit(parser->json[parser->position]) == 0)
+            {
+                number_ok = 0U;     /* bare minus is not a valid number */
+            }
         }
 
-        if (parser->json[parser->position - 1U] == '.')
+        /* Step 2: integer part — zero OR digit1-9 *DIGIT */
+        if (number_ok != 0U)
         {
-            result = OKJ_ERROR_BAD_NUMBER;
+            if (parser->json[parser->position] == '0')
+            {
+                parser->position++;     /* consume '0' */
+
+                if (okj_is_digit(parser->json[parser->position]) != 0)
+                {
+                    number_ok = 0U;     /* leading zero: "012" is invalid */
+                }
+            }
+            else
+            {
+                while (okj_is_digit(parser->json[parser->position]) != 0)
+                {
+                    parser->position++;
+                }
+            }
         }
-        else
+
+        /* Step 3: optional fractional part — '.' 1*DIGIT */
+        if ((number_ok != 0U) && (parser->json[parser->position] == '.'))
+        {
+            parser->position++;     /* consume '.' */
+
+            if (okj_is_digit(parser->json[parser->position]) == 0)
+            {
+                number_ok = 0U;     /* decimal point must be followed by a digit */
+            }
+            else
+            {
+                while (okj_is_digit(parser->json[parser->position]) != 0)
+                {
+                    parser->position++;
+                }
+            }
+        }
+
+        /* Step 4: optional exponent part — ('e'/'E') [sign] 1*DIGIT */
+        if ((number_ok != 0U) &&
+            ((parser->json[parser->position] == 'e') ||
+             (parser->json[parser->position] == 'E')))
+        {
+            parser->position++;     /* consume 'e' or 'E' */
+
+            if ((parser->json[parser->position] == '+') ||
+                (parser->json[parser->position] == '-'))
+            {
+                parser->position++;     /* consume optional sign */
+            }
+
+            if (okj_is_digit(parser->json[parser->position]) == 0)
+            {
+                number_ok = 0U;     /* exponent requires at least one digit */
+            }
+            else
+            {
+                while (okj_is_digit(parser->json[parser->position]) != 0)
+                {
+                    parser->position++;
+                }
+            }
+        }
+
+        if (number_ok != 0U)
         {
             tok->length = parser->position - start_pos;
 
             parser->token_count++;
+        }
+        else
+        {
+            result = OKJ_ERROR_BAD_NUMBER;
         }
     }
     else if (okj_match(&parser->json[parser->position], "true", 4U))

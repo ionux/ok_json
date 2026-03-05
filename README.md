@@ -56,6 +56,17 @@ Requires a C99-capable compiler. Tested with GCC using
 
 All limits are compile-time constants.
 
+## Wiki
+
+A full local wiki is available in the [`wiki/`](wiki/) directory:
+
+- [Home](wiki/Home.md)
+- [Project Overview](wiki/Project-Overview.md)
+- [Design Philosophy](wiki/Design-Philosophy.md)
+- [API Reference](wiki/API-Reference.md)
+- [Usage Guide](wiki/Usage-Guide.md)
+- [Development and Testing](wiki/Development-and-Testing.md)
+
 ## Contributing
 
 If you've found a bug or improvement, feel free to submit an update! Here's how:

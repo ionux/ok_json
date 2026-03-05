@@ -66,13 +66,25 @@ static int okj_match(const char *src, const char *lit, uint16_t len)
 
 /* Advance `p` past a JSON string (including both surrounding quotes).
  * `p` must point at the opening '"'.  Returns a pointer to the character
- * immediately following the closing '"', or to '\0' on unterminated input. */
+ * immediately following the closing '"', or to '\0' on unterminated input.
+ * Recognises backslash escapes so that \" inside a string does not
+ * prematurely terminate the scan. */
 static const char *okj_skip_string(const char *p)
 {
     p++;    /* skip opening '"' */
 
     while ((*p != '"') && (*p != '\0'))
     {
+        if (*p == '\\')
+        {
+            p++;    /* skip the backslash */
+
+            if (*p == '\0')
+            {
+                break;  /* truncated input: backslash at end of stream */
+            }
+        }
+
         p++;
     }
 
@@ -314,6 +326,16 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             if ((parser->position - start_pos) >= OKJ_MAX_STRING_LEN)
             {
                 break;
+            }
+
+            if (parser->json[parser->position] == '\\')
+            {
+                parser->position++;     /* skip backslash */
+
+                if (parser->json[parser->position] == '\0')
+                {
+                    break;  /* truncated input: backslash at end of stream */
+                }
             }
 
             parser->position++;

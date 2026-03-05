@@ -581,6 +581,11 @@ OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
     s_array_result.start = parser->tokens[idx].start;
     s_array_result.count = okj_count_array_elements(parser->tokens[idx].start);
 
+    if (s_array_result.count > OKJ_MAX_ARRAY_SIZE)
+    {
+        return NULL;
+    }
+
     return &s_array_result;
 }
 
@@ -602,6 +607,11 @@ OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
 
     s_object_result.start = parser->tokens[idx].start;
     s_object_result.count = okj_count_object_members(parser->tokens[idx].start);
+
+    if (s_object_result.count > OKJ_MAX_OBJECT_SIZE)
+    {
+        return NULL;
+    }
 
     return &s_object_result;
 }

@@ -66,9 +66,11 @@ static const uint16_t OKJ_MAX_STRING_LEN = 64U;
 static const uint16_t OKJ_MAX_ARRAY_SIZE = 64U;
 
 /**
- * @brief Maximum size of array to process
+ * @brief Maximum number of key-value members in an object to process.
+ * Note: must stay below (OKJ_MAX_TOKENS - 1) / 2 so that a fully-parsed
+ * object never exhausts the token budget before the member limit fires.
  **/
-static const uint16_t OKJ_MAX_OBJECT_SIZE = 64U;
+static const uint16_t OKJ_MAX_OBJECT_SIZE = 32U;
 
 /**
  * @brief Array of all valid ASCII characters for string processing

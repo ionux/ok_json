@@ -338,77 +338,101 @@ OkJsonNumber *okj_get_number(OkJsonParser *parser, const char *key)
 {
     uint16_t idx = 0U;
 
-    if (parser == NULL || key == NULL) { return NULL; }
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
 
     idx = okj_find_value_index(parser, key);
-    if (idx == OKJ_MAX_TOKENS || parser->tokens[idx].type != OKJ_NUMBER)
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_NUMBER))
     {
         return NULL;
     }
 
     s_number_result.start  = parser->tokens[idx].start;
     s_number_result.length = parser->tokens[idx].length;
+
     return &s_number_result;
 }
 
 OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key)
 {
-    uint16_t idx;
+    uint16_t idx = 0U;
 
-    if (parser == NULL || key == NULL) { return NULL; }
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
 
     idx = okj_find_value_index(parser, key);
-    if (idx == OKJ_MAX_TOKENS || parser->tokens[idx].type != OKJ_BOOLEAN)
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_BOOLEAN))
     {
         return NULL;
     }
 
     s_boolean_result.start  = parser->tokens[idx].start;
     s_boolean_result.length = parser->tokens[idx].length;
+
     return &s_boolean_result;
 }
 
 OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
 {
-    uint16_t idx;
+    uint16_t idx = 0U;
 
-    if (parser == NULL || key == NULL) { return NULL; }
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
 
     idx = okj_find_value_index(parser, key);
-    if (idx == OKJ_MAX_TOKENS || parser->tokens[idx].type != OKJ_ARRAY)
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
     {
         return NULL;
     }
 
     s_array_result.start = parser->tokens[idx].start;
     s_array_result.count = 0U;
+
     return &s_array_result;
 }
 
 OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
 {
-    uint16_t idx;
+    uint16_t idx = 0U;
 
-    if (parser == NULL || key == NULL) { return NULL; }
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
 
     idx = okj_find_value_index(parser, key);
-    if (idx == OKJ_MAX_TOKENS || parser->tokens[idx].type != OKJ_OBJECT)
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
     {
         return NULL;
     }
 
     s_object_result.start = parser->tokens[idx].start;
     s_object_result.count = 0U;
+
     return &s_object_result;
 }
 
 OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key)
 {
-    uint16_t idx;
+    uint16_t idx = 0U;
 
-    if (parser == NULL || key == NULL) { return NULL; }
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
 
     idx = okj_find_value_index(parser, key);
+
     if (idx == OKJ_MAX_TOKENS)
     {
         return NULL;

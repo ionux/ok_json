@@ -47,6 +47,12 @@ void test_get_object_count(void);
 void test_string_too_long(void);
 void test_escaped_quote_in_string(void);
 void test_escaped_backslash_in_string(void);
+void test_escape_newline(void);
+void test_escape_other_single_char(void);
+void test_escape_unicode_valid(void);
+void test_escape_unicode_invalid_hex(void);
+void test_escape_unicode_truncated(void);
+void test_escape_unknown(void);
 void test_array_too_large(void);
 void test_object_too_large(void);
 void test_get_array_raw(void);
@@ -474,6 +480,129 @@ void test_escaped_backslash_in_string(void)
     printf("test_escaped_backslash_in_string passed!\n");
 }
 
+void test_escape_newline(void)
+{
+    /* Parse a string containing \n (RFC 8259 newline escape).
+     * The parser stores raw bytes, so the token must contain the two
+     * source bytes '\' and 'n', not a decoded newline character. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"msg": "line1\nline2"} — 'line1\nline2' is 12 raw bytes */
+    char json_str[] = "{\"msg\": \"line1\\nline2\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "msg");
+
+    assert(str != NULL);
+    assert(str->length == 12U);     /* l,i,n,e,1,\,n,l,i,n,e,2 */
+    assert(str->start[5] == '\\');  /* raw backslash byte */
+    assert(str->start[6] == 'n');   /* literal 'n' byte */
+
+    printf("test_escape_newline passed!\n");
+}
+
+void test_escape_other_single_char(void)
+{
+    /* Parse a string containing \t, \r, \b, \f, and \/ — all valid
+     * single-character RFC 8259 escape sequences beyond \" and \\.
+     * Token must contain 10 raw bytes (two per escape). */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"msg": "\t\r\b\f\/"} — 10 raw bytes */
+    char json_str[] = "{\"msg\": \"\\t\\r\\b\\f\\/\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "msg");
+
+    assert(str != NULL);
+    assert(str->length == 10U);     /* \,t,\,r,\,b,\,f,\,/ */
+    assert(str->start[0] == '\\');
+    assert(str->start[1] == 't');
+
+    printf("test_escape_other_single_char passed!\n");
+}
+
+void test_escape_unicode_valid(void)
+{
+    /* Parse a string containing a valid \uXXXX escape (\u0041 = 'A').
+     * The parser stores raw bytes, so the token must be 6 bytes long:
+     * '\', 'u', '0', '0', '4', '1'. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"ch": "\u0041"} — 6 raw bytes in the value */
+    char json_str[] = "{\"ch\": \"\\u0041\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "ch");
+
+    assert(str != NULL);
+    assert(str->length == 6U);      /* \,u,0,0,4,1 */
+    assert(str->start[0] == '\\');
+    assert(str->start[1] == 'u');
+
+    printf("test_escape_unicode_valid passed!\n");
+}
+
+void test_escape_unicode_invalid_hex(void)
+{
+    /* Attempt to parse a string containing \u004G where 'G' is not a
+     * valid hexadecimal digit.  The parser must reject this input. */
+
+    OkJsonParser parser;
+
+    /* JSON: {"ch": "\u004G"} — 'G' is not a hex digit */
+    char json_str[] = "{\"ch\": \"\\u004G\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
+
+    printf("test_escape_unicode_invalid_hex passed!\n");
+}
+
+void test_escape_unicode_truncated(void)
+{
+    /* Attempt to parse a string containing \u followed by only 2 hex
+     * digits instead of the required 4.  The parser must reject this. */
+
+    OkJsonParser parser;
+
+    /* JSON: {"ch": "\u00"} — only 2 hex digits after \u */
+    char json_str[] = "{\"ch\": \"\\u00\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
+
+    printf("test_escape_unicode_truncated passed!\n");
+}
+
+void test_escape_unknown(void)
+{
+    /* Attempt to parse a string containing \q, which is not a valid
+     * JSON escape sequence.  The parser must reject this input. */
+
+    OkJsonParser parser;
+
+    /* JSON: {"msg": "hello\qworld"} — \q is not a valid escape */
+    char json_str[] = "{\"msg\": \"hello\\qworld\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
+
+    printf("test_escape_unknown passed!\n");
+}
+
 void test_array_too_large(void)
 {
     /* Build {"items": [1,1,...,1]} with 65 elements — one more than
@@ -731,6 +860,12 @@ int main(int argc, char* argv[])
     test_string_too_long();
     test_escaped_quote_in_string();
     test_escaped_backslash_in_string();
+    test_escape_newline();
+    test_escape_other_single_char();
+    test_escape_unicode_valid();
+    test_escape_unicode_invalid_hex();
+    test_escape_unicode_truncated();
+    test_escape_unknown();
     test_array_too_large();
     test_object_too_large();
     test_get_array_raw();

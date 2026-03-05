@@ -59,6 +59,157 @@ static int okj_match(const char *src, const char *lit, uint16_t len)
 }
 
 /* ---------------------------------------------------------------------------
+ * Helpers for counting array elements and object members in the raw JSON
+ * string.  These walk the source text so the counts are accurate even when
+ * multiple values appear at the same nesting level.
+ * ---------------------------------------------------------------------------*/
+
+/* Advance `p` past a JSON string (including both surrounding quotes).
+ * `p` must point at the opening '"'.  Returns a pointer to the character
+ * immediately following the closing '"', or to '\0' on unterminated input. */
+static const char *okj_skip_string(const char *p)
+{
+    p++;    /* skip opening '"' */
+
+    while ((*p != '"') && (*p != '\0'))
+    {
+        p++;
+    }
+
+    if (*p == '"')
+    {
+        p++;    /* skip closing '"' */
+    }
+
+    return p;
+}
+
+/* Count the number of elements in a JSON array whose text begins at `start`
+ * (which must point to the '[' character).  Handles nested arrays and objects
+ * correctly by tracking bracket depth, and skips string content to avoid
+ * counting structural characters that appear inside quoted values. */
+static uint16_t okj_count_array_elements(const char *start)
+{
+    uint16_t    depth = 0U;
+    uint16_t    count = 0U;
+    uint8_t     seen  = 0U;    /* set when first non-whitespace element is found */
+    const char *p     = start;
+
+    if ((p == NULL) || (*p != '['))
+    {
+        return 0U;
+    }
+
+    p++;        /* skip '[' */
+    depth = 1U;
+
+    while ((*p != '\0') && (depth > 0U))
+    {
+        char c = *p;
+
+        if (c == '"')
+        {
+            /* Skip string content so commas inside strings are not counted. */
+            p = okj_skip_string(p);
+
+            if ((depth == 1U) && (seen == 0U))
+            {
+                seen = 1U;
+            }
+        }
+        else
+        {
+            if ((c == '[') || (c == '{'))
+            {
+                if ((depth == 1U) && (seen == 0U))
+                {
+                    seen = 1U;
+                }
+                depth++;
+            }
+            else if ((c == ']') || (c == '}'))
+            {
+                depth--;
+            }
+            else if ((c == ',') && (depth == 1U))
+            {
+                count++;
+            }
+            else if ((!okj_is_whitespace(c)) && (depth == 1U) && (seen == 0U))
+            {
+                seen = 1U;
+            }
+            else
+            {
+                /* Other characters (digits, letters, etc.) need no action. */
+            }
+
+            p++;
+        }
+    }
+
+    /* The comma count equals elements-minus-one for a non-empty array. */
+    if (seen != 0U)
+    {
+        count++;
+    }
+
+    return count;
+}
+
+/* Count the number of key-value members in a JSON object whose text begins
+ * at `start` (which must point to the '{' character).  Each colon at depth 1
+ * corresponds to exactly one member. */
+static uint16_t okj_count_object_members(const char *start)
+{
+    uint16_t    depth = 0U;
+    uint16_t    count = 0U;
+    const char *p     = start;
+
+    if ((p == NULL) || (*p != '{'))
+    {
+        return 0U;
+    }
+
+    p++;        /* skip '{' */
+    depth = 1U;
+
+    while ((*p != '\0') && (depth > 0U))
+    {
+        char c = *p;
+
+        if (c == '"')
+        {
+            /* Skip string content so colons inside keys/values are ignored. */
+            p = okj_skip_string(p);
+        }
+        else
+        {
+            if ((c == '[') || (c == '{'))
+            {
+                depth++;
+            }
+            else if ((c == ']') || (c == '}'))
+            {
+                depth--;
+            }
+            else if ((c == ':') && (depth == 1U))
+            {
+                count++;
+            }
+            else
+            {
+                /* Other characters need no action. */
+            }
+
+            p++;
+        }
+    }
+
+    return count;
+}
+
+/* ---------------------------------------------------------------------------
  * File-scope result structs returned by getter functions.
  * Avoids dynamic allocation (suitable for embedded targets).
  * ---------------------------------------------------------------------------*/
@@ -160,10 +311,21 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         while ((parser->json[parser->position] != '"') &&
                (parser->json[parser->position] != '\0'))
         {
+            if ((parser->position - start_pos) >= OKJ_MAX_STRING_LEN)
+            {
+                break;
+            }
+
             parser->position++;
         }
 
-        if (parser->json[parser->position] != '"')
+        if ((parser->json[parser->position] != '"') &&
+            (parser->json[parser->position] != '\0'))
+        {
+            /* Loop exited due to the length limit, not a closing quote. */
+            result = OKJ_ERROR_MAX_STR_LEN_EXCEEDED;
+        }
+        else if (parser->json[parser->position] != '"')
         {
             result = OKJ_ERROR_SYNTAX;
         }
@@ -258,10 +420,10 @@ OkjError okj_parse(OkJsonParser *parser)
     while ((parser->json[parser->position] != '\0') &&
            (parser->token_count < OKJ_MAX_TOKENS))
     {
-        if (okj_parse_value(parser) != OKJ_SUCCESS)
-        {
-            result = OKJ_ERROR_PARSING_FAILED;
+        result = okj_parse_value(parser);
 
+        if (result != OKJ_SUCCESS)
+        {
             break;
         }
     }
@@ -395,7 +557,7 @@ OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
     }
 
     s_array_result.start = parser->tokens[idx].start;
-    s_array_result.count = 0U;
+    s_array_result.count = okj_count_array_elements(parser->tokens[idx].start);
 
     return &s_array_result;
 }
@@ -417,7 +579,7 @@ OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
     }
 
     s_object_result.start = parser->tokens[idx].start;
-    s_object_result.count = 0U;
+    s_object_result.count = okj_count_object_members(parser->tokens[idx].start);
 
     return &s_object_result;
 }

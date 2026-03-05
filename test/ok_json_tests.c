@@ -42,6 +42,9 @@ void test_invalid_boolean(void);
 void test_get_not_found(void);
 void test_max_tokens_exceeded(void);
 void test_truncated_string(void);
+void test_get_array_count(void);
+void test_get_object_count(void);
+void test_string_too_long(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -326,6 +329,93 @@ void test_truncated_string(void)
     printf("test_truncated_string passed!\n");
 }
 
+void test_get_array_count(void)
+{
+    /* Parse an object that contains an array value and verify that
+     * okj_get_array() returns the correct element count. */
+
+    OkJsonParser parser;
+    OkJsonArray *arr;
+    char json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array(&parser, "items");
+
+    assert(arr != NULL);
+    assert(arr->count == 3U);   /* three numeric elements */
+
+    printf("test_get_array_count passed!\n");
+}
+
+void test_get_object_count(void)
+{
+    /* Parse an object that contains a nested object value and verify that
+     * okj_get_object() returns the correct member count. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char json_str[] = "{\"info\": {\"a\": 1, \"b\": 2}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object(&parser, "info");
+
+    assert(obj != NULL);
+    assert(obj->count == 2U);   /* two key-value members */
+
+    printf("test_get_object_count passed!\n");
+}
+
+void test_string_too_long(void)
+{
+    /* Attempt to parse an object whose string value exceeds OKJ_MAX_STRING_LEN
+     * (64 bytes).  The parser should return OKJ_ERROR_MAX_STR_LEN_EXCEEDED.
+     *
+     * Buffer layout: {"k":"<65 x chars>"}
+     *   '{'  = 1
+     *   '"k"' = 3
+     *   ':'  = 1
+     *   '"'  = 1  (opening quote of value)
+     *   65 x = 65
+     *   '"'  = 1  (closing quote)
+     *   '}'  = 1
+     *   '\0' = 1
+     *   Total = 74 bytes
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[74];
+    uint16_t     i;
+    uint16_t     pos = 0U;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'k';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 65U; i++)
+    {
+        json_str[pos++] = 'x';
+    }
+
+    json_str[pos++] = '"';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
+
+    printf("test_string_too_long passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -344,6 +434,9 @@ int main(int argc, char* argv[])
     test_get_not_found();
     test_max_tokens_exceeded();
     test_truncated_string();
+    test_get_array_count();
+    test_get_object_count();
+    test_string_too_long();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -512,11 +512,22 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
 OkjError okj_parse(OkJsonParser *parser)
 {
-    OkjError result = OKJ_SUCCESS;
+    OkjError result  = OKJ_SUCCESS;
+    uint16_t json_len = 0U;
 
     if (parser == NULL)
     {
         return OKJ_ERROR_BAD_POINTER;
+    }
+
+    while (parser->json[json_len] != '\0')
+    {
+        json_len++;
+
+        if (json_len > OKJ_MAX_JSON_LEN)
+        {
+            return OKJ_ERROR_MAX_JSON_LEN_EXCEEDED;
+        }
     }
 
     while ((parser->json[parser->position] != '\0') &&

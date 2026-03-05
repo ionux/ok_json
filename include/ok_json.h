@@ -73,6 +73,13 @@ static const uint16_t OKJ_MAX_ARRAY_SIZE = 64U;
 static const uint16_t OKJ_MAX_OBJECT_SIZE = 32U;
 
 /**
+ * @brief Maximum length of the raw JSON input string in bytes (excluding the
+ * terminating NUL character).  Inputs longer than this are rejected by
+ * okj_parse() before any tokenisation begins.
+ **/
+static const uint16_t OKJ_MAX_JSON_LEN = 4096U;
+
+/**
  * @brief Array of all valid ASCII characters for string processing
  **/
 static const char OKJ_VALID_CHARS[96] = {
@@ -107,7 +114,8 @@ typedef enum
     OKJ_ERROR_NULL_PARSER_OBJ      = 13,
     OKJ_ERROR_INVALID_TYPE_ENUM    = 14,
     OKJ_ERROR_NO_FREE_SPACE        = 15,
-    OKJ_ERROR_PARSING_FAILED       = 16
+    OKJ_ERROR_PARSING_FAILED       = 16,
+    OKJ_ERROR_MAX_JSON_LEN_EXCEEDED = 17
 } OkjError;
 
 /**

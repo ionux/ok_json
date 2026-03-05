@@ -69,6 +69,15 @@ void test_count_objects(void);
 void test_count_arrays(void);
 void test_count_elements(void);
 void test_debug_print(void);
+void test_empty_object(void);
+void test_empty_array(void);
+void test_nested_object(void);
+void test_nested_array_in_object(void);
+void test_temp_negative_number(void);
+void test_null_value(void);
+void test_key_exactly_64_chars(void);
+void test_key_65_chars_error(void);
+void test_deeply_nested_at_limit(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1034,6 +1043,311 @@ void test_debug_print(void)
     printf("test_debug_print passed!\n");
 }
 
+void test_empty_object(void)
+{
+    /* Verify that a standalone empty object {} is parsed successfully,
+     * produces exactly one token, and that okj_count_objects() returns 1.
+     * Also verify that a nested empty object value is accessible via
+     * okj_get_object() and reports a member count of 0. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+
+    /* Standalone empty object */
+    char json1[] = "{}";
+
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);          /* only the OKJ_OBJECT token */
+    assert(parser.tokens[0].type == OKJ_OBJECT);
+    assert(okj_count_objects(&parser) == 1U);
+
+    /* Empty object as a value — getter must return non-NULL with count 0 */
+    char json2[] = "{\"k\": {}}";
+
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object(&parser, "k");
+
+    assert(obj != NULL);
+    assert(obj->count == 0U);
+
+    printf("test_empty_object passed!\n");
+}
+
+void test_empty_array(void)
+{
+    /* Verify that a standalone empty array [] is parsed successfully,
+     * produces exactly one token, and that okj_count_arrays() returns 1.
+     * Also verify that a nested empty array value is accessible via
+     * okj_get_array() and reports an element count of 0. */
+
+    OkJsonParser parser;
+    OkJsonArray *arr;
+
+    /* Standalone empty array */
+    char json1[] = "[]";
+
+    okj_init(&parser, json1);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);          /* only the OKJ_ARRAY token */
+    assert(parser.tokens[0].type == OKJ_ARRAY);
+    assert(okj_count_arrays(&parser) == 1U);
+
+    /* Empty array as a value — getter must return non-NULL with count 0 */
+    char json2[] = "{\"k\": []}";
+
+    okj_init(&parser, json2);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array(&parser, "k");
+
+    assert(arr != NULL);
+    assert(arr->count == 0U);
+
+    printf("test_empty_array passed!\n");
+}
+
+void test_nested_object(void)
+{
+    /* Parse {"outer": {"inner": 1}} and verify:
+     *   - Parsing succeeds
+     *   - Token count is 5: outer object, "outer" key, inner object,
+     *                        "inner" key, number 1
+     *   - The inner OKJ_OBJECT token is present at index 2
+     *   - okj_get_object() for "outer" returns non-NULL with member count 1 */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char json_str[] = "{\"outer\": {\"inner\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+    assert(parser.token_count == 5U);
+
+    assert(parser.tokens[0].type == OKJ_OBJECT);   /* outer { } */
+    assert(parser.tokens[1].type == OKJ_STRING);   /* "outer"   */
+    assert(parser.tokens[2].type == OKJ_OBJECT);   /* inner { } */
+    assert(parser.tokens[3].type == OKJ_STRING);   /* "inner"   */
+    assert(parser.tokens[4].type == OKJ_NUMBER);   /* 1         */
+
+    obj = okj_get_object(&parser, "outer");
+
+    assert(obj != NULL);
+    assert(obj->count == 1U);   /* one key-value member in the inner object */
+
+    printf("test_nested_object passed!\n");
+}
+
+void test_nested_array_in_object(void)
+{
+    /* Parse {"list": [1, 2, 3]} and verify that okj_get_array() returns
+     * non-NULL with the correct element count. */
+
+    OkJsonParser parser;
+    OkJsonArray *arr;
+    char json_str[] = "{\"list\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array(&parser, "list");
+
+    assert(arr != NULL);
+    assert(arr->count == 3U);
+
+    printf("test_nested_array_in_object passed!\n");
+}
+
+void test_temp_negative_number(void)
+{
+    /* Parse {"temp": -42} and verify that okj_get_number() returns a token
+     * covering all three raw bytes: '-', '4', '2'. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json_str[] = "{\"temp\": -42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "temp");
+
+    assert(num != NULL);
+    assert(num->length == 3U);      /* '-', '4', '2' */
+    assert(num->start[0] == '-');
+
+    printf("test_temp_negative_number passed!\n");
+}
+
+void test_null_value(void)
+{
+    /* Parse {"x": null} and verify that okj_get_token() returns a token
+     * with type OKJ_NULL and the correct raw byte length. */
+
+    OkJsonParser  parser;
+    OkJsonToken  *tok;
+    char json_str[] = "{\"x\": null}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    tok = okj_get_token(&parser, "x");
+
+    assert(tok != NULL);
+    assert(tok->type   == OKJ_NULL);
+    assert(tok->length == 4U);      /* 'n', 'u', 'l', 'l' */
+
+    printf("test_null_value passed!\n");
+}
+
+void test_key_exactly_64_chars(void)
+{
+    /* Build {"<64 x's>": 1} — a key that is exactly OKJ_MAX_STRING_LEN
+     * bytes long.  Parsing must succeed. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Layout: { " <64 chars> " : 1 } \0
+     *          1  1    64    1  1 1 1  1  = 71 bytes  */
+    char     json_str[71];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 64U; i++)
+    {
+        json_str[pos++] = 'x';
+    }
+
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '1';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+
+    printf("test_key_exactly_64_chars passed!\n");
+}
+
+void test_key_65_chars_error(void)
+{
+    /* Build {"<65 x's>": 1} — a key one byte beyond OKJ_MAX_STRING_LEN.
+     * The parser must return OKJ_ERROR_MAX_STR_LEN_EXCEEDED. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Layout: { " <65 chars> " : 1 } \0
+     *          1  1    65    1  1 1 1  1  = 72 bytes  */
+    char     json_str[72];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 65U; i++)
+    {
+        json_str[pos++] = 'x';
+    }
+
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '1';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
+
+    printf("test_key_65_chars_error passed!\n");
+}
+
+void test_deeply_nested_at_limit(void)
+{
+    /* Build a deeply nested object: {"a":{"a":{"a":...{"a":1}...}}}
+     * with enough levels to push the token count beyond OKJ_MAX_TOKENS (128).
+     *
+     * Token count for N levels = 2*N + 1 (N objects + N string keys + 1 number).
+     * At N=63: 127 tokens  -> OKJ_SUCCESS
+     * At N=64: 129 tokens  -> OKJ_ERROR_MAX_TOKENS_EXCEEDED
+     *
+     * Both outcomes are deterministic and safe; neither is a crash or
+     * silent corruption. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* N=63: 63*5 + 1 + 63 = 379 chars + NUL = 380 bytes */
+    char json63[380];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    for (i = 0U; i < 63U; i++)
+    {
+        json63[pos++] = '{';
+        json63[pos++] = '"';
+        json63[pos++] = 'a';
+        json63[pos++] = '"';
+        json63[pos++] = ':';
+    }
+
+    json63[pos++] = '1';
+
+    for (i = 0U; i < 63U; i++)
+    {
+        json63[pos++] = '}';
+    }
+
+    json63[pos] = '\0';
+
+    okj_init(&parser, json63);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 127U);  /* 2*63 + 1 */
+
+    /* N=64: 64*5 + 1 + 64 = 385 chars + NUL = 386 bytes */
+    char json64[386];
+    pos = 0U;
+
+    for (i = 0U; i < 64U; i++)
+    {
+        json64[pos++] = '{';
+        json64[pos++] = '"';
+        json64[pos++] = 'a';
+        json64[pos++] = '"';
+        json64[pos++] = ':';
+    }
+
+    json64[pos++] = '1';
+
+    for (i = 0U; i < 64U; i++)
+    {
+        json64[pos++] = '}';
+    }
+
+    json64[pos] = '\0';
+
+    okj_init(&parser, json64);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_TOKENS_EXCEEDED);
+
+    printf("test_deeply_nested_at_limit passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1079,6 +1393,15 @@ int main(int argc, char* argv[])
     test_count_arrays();
     test_count_elements();
     test_debug_print();
+    test_empty_object();
+    test_empty_array();
+    test_nested_object();
+    test_nested_array_in_object();
+    test_temp_negative_number();
+    test_null_value();
+    test_key_exactly_64_chars();
+    test_key_65_chars_error();
+    test_deeply_nested_at_limit();
 
     printf("All OK_JSON tests passed!\n");
 

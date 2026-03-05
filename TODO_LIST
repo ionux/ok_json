@@ -1,6 +1,6 @@
 Items that I want/need to work on:
 
-MVP is complete as of 2026-03-05. All 13 tests pass. Zero stdlib dependencies.
+MVP is complete as of 2026-03-05. All 18 tests pass. Zero stdlib dependencies.
 See MVP_ROADMAP.md for the full historical task list with completion status.
 
 Post-MVP items remaining:
@@ -12,42 +12,23 @@ Post-MVP items remaining:
   formal analysis; continue deferring the toolchain requirement, but the code
   change itself is small.
 
-* Remove or repurpose test/ok_json_test_runner.c.
+* Remove or repurpose test/ok_json_test_runner.c. (deferred by user)
   The file currently contains only "/* placeholder */" and is not compiled by
   the Makefile (the test binary is built from ok_json_tests.c which already
   has main()).  Either delete it or use it as a separate harness entry point
   if the test suite is ever split into declaration and runner files.
 
-* Remove OKJ_VALID_CHARS from ok_json.h or put it to use.
+* Remove OKJ_VALID_CHARS from ok_json.h or put it to use. (deferred by user)
   The 96-element static const array is defined in the header but referenced
   nowhere in ok_json.c or the tests.  As a static in a header it gets
   duplicated into every translation unit that includes the header, wasting
-  ROM.  Either use it in the string scanner to validate characters, or remove
-  it entirely.
-
-* Populate the count field in okj_get_array() and okj_get_object().
-  Both functions currently return count = 0U unconditionally.  A useful
-  implementation would scan the token array from the matching ARRAY/OBJECT
-  token forward and count the direct children (one depth level only for the
-  flat-token model).
-
-* Enforce OKJ_MAX_STRING_LEN during string parsing.
-  The string scanner in okj_parse_value() does not check whether the string
-  length exceeds OKJ_MAX_STRING_LEN.  Add a check in the scan loop and return
-  OKJ_ERROR_MAX_STR_LEN_EXCEEDED if the limit is hit.
+  ROM.  Intended to be used for string character validation in the future.
 
 * Add test for deeply nested JSON input.
   The test suite has no case that exercises behaviour at the nesting boundary
   (e.g., objects nested inside objects).  Define whether the parser should
   return an error or silently parse what it can, then add a test that asserts
   the chosen behaviour.
-
-* Add string escape sequence handling.
-  The string scanner does not interpret \", \\, \n, \t, or \uXXXX.  A
-  backslash in the input currently causes the scanner to stop at the next
-  unescaped quote, producing wrong token lengths.  At minimum, skip over \\
-  and \" pairs in the scan loop so that escaped quotes do not terminate the
-  string prematurely.
 
 * Add exponent notation support for numbers.
   The number scanner handles digits and '.', but does not handle 'e' or 'E'
@@ -59,6 +40,26 @@ Post-MVP items remaining:
     - Nested object inside object (tests nesting behaviour)
     - Nested array inside object (tests mixed nesting)
     - Number with exponent (tests rejection or acceptance once implemented)
-    - String with escape sequence (tests \\" and \\\\ handling)
     - Empty object {} and empty array []
     - Key with length at and above OKJ_MAX_STRING_LEN boundary
+
+Completed post-MVP items:
+
+* [DONE] Populate the count field in okj_get_array() and okj_get_object().
+  Both functions now walk the raw JSON text to count array elements (by
+  commas at depth 1) and object members (by colons at depth 1), with proper
+  string skipping so structural characters inside quoted values are ignored.
+
+* [DONE] Enforce OKJ_MAX_STRING_LEN during string parsing.
+  The string scanner now breaks out of its scan loop when the running raw
+  byte length reaches OKJ_MAX_STRING_LEN and returns
+  OKJ_ERROR_MAX_STR_LEN_EXCEEDED.
+
+* [DONE] Add string escape sequence handling.
+  Both the main string scan loop in okj_parse_value() and the okj_skip_string()
+  helper used by the count functions now recognise backslash escapes.  When a
+  '\' is encountered, the scanner advances past it and the following character
+  unconditionally, so that \" does not prematurely terminate a string and \\
+  is counted as one escape unit rather than two separate characters.  Token
+  start and length report raw bytes (escape sequences included), consistent
+  with the rest of the API.

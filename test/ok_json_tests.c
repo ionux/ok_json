@@ -45,6 +45,8 @@ void test_truncated_string(void);
 void test_get_array_count(void);
 void test_get_object_count(void);
 void test_string_too_long(void);
+void test_escaped_quote_in_string(void);
+void test_escaped_backslash_in_string(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -416,6 +418,54 @@ void test_string_too_long(void)
     printf("test_string_too_long passed!\n");
 }
 
+void test_escaped_quote_in_string(void)
+{
+    /* Parse a string value that contains an escaped double-quote (\").
+     * The scanner must not treat \" as the closing quote; the token
+     * length must cover all raw bytes including the backslash. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"msg": "say \"hi\""} — value raw bytes: say \"hi\" (10 bytes) */
+    char json_str[] = "{\"msg\": \"say \\\"hi\\\"\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "msg");
+
+    assert(str != NULL);
+    assert(str->length == 10U);     /* s,a,y, ,\,",h,i,\," */
+    assert(str->start[0] == 's');
+
+    printf("test_escaped_quote_in_string passed!\n");
+}
+
+void test_escaped_backslash_in_string(void)
+{
+    /* Parse a string value that contains an escaped backslash (\\).
+     * The scanner must treat \\ as a single escape unit and continue,
+     * not stop at the second backslash mistaking it for an escape prefix. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"path": "a\\b"} — value raw bytes: a,\,\,b (4 bytes) */
+    char json_str[] = "{\"path\": \"a\\\\b\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "path");
+
+    assert(str != NULL);
+    assert(str->length == 4U);      /* a, \, \, b */
+    assert(str->start[0] == 'a');
+
+    printf("test_escaped_backslash_in_string passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -437,6 +487,8 @@ int main(int argc, char* argv[])
     test_get_array_count();
     test_get_object_count();
     test_string_too_long();
+    test_escaped_quote_in_string();
+    test_escaped_backslash_in_string();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -221,6 +221,84 @@ static uint16_t okj_count_object_members(const char *start)
     return count;
 }
 
+/* Measure the full byte length of a JSON array or object starting at `start`
+ * (which must point to '[' or '{').  Returns the count of bytes from the
+ * opening bracket to the matching closing bracket, inclusive.  String content
+ * is skipped so that structural characters inside quoted values are ignored.
+ * Returns 0 if `start` is NULL or does not begin with '[' or '{'. */
+static uint16_t okj_measure_container(const char *start)
+{
+    uint16_t    depth  = 0U;
+    uint16_t    length = 0U;
+    const char *p      = start;
+
+    if ((p == NULL) || ((*p != '[') && (*p != '{')))
+    {
+        return 0U;
+    }
+
+    while (*p != '\0')
+    {
+        char c = *p;
+        length++;
+
+        if (c == '"')
+        {
+            /* Skip past the opening quote (already counted above). */
+            p++;
+
+            while ((*p != '\0') && (*p != '"'))
+            {
+                if (*p == '\\')
+                {
+                    p++;
+                    if (*p != '\0')
+                    {
+                        length++;
+                        p++;
+                    }
+                }
+                else
+                {
+                    p++;
+                }
+                length++;
+            }
+
+            /* Count the closing quote if present, then continue. */
+            if (*p == '"')
+            {
+                length++;
+                p++;
+            }
+        }
+        else
+        {
+            if ((c == '[') || (c == '{'))
+            {
+                depth++;
+            }
+            else if ((c == ']') || (c == '}'))
+            {
+                depth--;
+            }
+            else
+            {
+                /* whitespace, digits, colons, commas, letters, etc. */
+            }
+
+            p++;
+
+            if (depth == 0U)
+            {
+                break;
+            }
+        }
+    }
+
+    return length;
+}
+
 /* ---------------------------------------------------------------------------
  * File-scope result structs returned by getter functions.
  * Avoids dynamic allocation (suitable for embedded targets).
@@ -231,6 +309,8 @@ static OkJsonNumber  s_number_result;
 static OkJsonBoolean s_boolean_result;
 static OkJsonArray   s_array_result;
 static OkJsonObject  s_object_result;
+static OkJsonArray   s_full_array_result;
+static OkJsonObject  s_full_object_result;
 
 /* ---------------------------------------------------------------------------
  * Public API
@@ -578,8 +658,9 @@ OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
         return NULL;
     }
 
-    s_array_result.start = parser->tokens[idx].start;
-    s_array_result.count = okj_count_array_elements(parser->tokens[idx].start);
+    s_array_result.start  = parser->tokens[idx].start;
+    s_array_result.count  = okj_count_array_elements(parser->tokens[idx].start);
+    s_array_result.length = okj_measure_container(parser->tokens[idx].start);
 
     if (s_array_result.count > OKJ_MAX_ARRAY_SIZE)
     {
@@ -605,8 +686,9 @@ OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
         return NULL;
     }
 
-    s_object_result.start = parser->tokens[idx].start;
-    s_object_result.count = okj_count_object_members(parser->tokens[idx].start);
+    s_object_result.start  = parser->tokens[idx].start;
+    s_object_result.count  = okj_count_object_members(parser->tokens[idx].start);
+    s_object_result.length = okj_measure_container(parser->tokens[idx].start);
 
     if (s_object_result.count > OKJ_MAX_OBJECT_SIZE)
     {
@@ -634,3 +716,176 @@ OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key)
 
     return &parser->tokens[idx];
 }
+
+OkJsonArray *okj_get_array_raw(OkJsonParser *parser, const char *key)
+{
+    uint16_t idx = 0U;
+
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
+
+    idx = okj_find_value_index(parser, key);
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
+    {
+        return NULL;
+    }
+
+    s_full_array_result.start  = parser->tokens[idx].start;
+    s_full_array_result.count  = okj_count_array_elements(parser->tokens[idx].start);
+    s_full_array_result.length = okj_measure_container(parser->tokens[idx].start);
+
+    return &s_full_array_result;
+}
+
+OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key)
+{
+    uint16_t idx = 0U;
+
+    if ((parser == NULL) || (key == NULL))
+    {
+        return NULL;
+    }
+
+    idx = okj_find_value_index(parser, key);
+
+    if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
+    {
+        return NULL;
+    }
+
+    s_full_object_result.start  = parser->tokens[idx].start;
+    s_full_object_result.count  = okj_count_object_members(parser->tokens[idx].start);
+    s_full_object_result.length = okj_measure_container(parser->tokens[idx].start);
+
+    return &s_full_object_result;
+}
+
+uint16_t okj_count_objects(OkJsonParser *parser)
+{
+    uint16_t count = 0U;
+    uint16_t i;
+
+    if (parser == NULL)
+    {
+        return 0U;
+    }
+
+    for (i = 0U; i < parser->token_count; i++)
+    {
+        if (parser->tokens[i].type == OKJ_OBJECT)
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+uint16_t okj_count_arrays(OkJsonParser *parser)
+{
+    uint16_t count = 0U;
+    uint16_t i;
+
+    if (parser == NULL)
+    {
+        return 0U;
+    }
+
+    for (i = 0U; i < parser->token_count; i++)
+    {
+        if (parser->tokens[i].type == OKJ_ARRAY)
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+uint16_t okj_count_elements(OkJsonParser *parser)
+{
+    if (parser == NULL)
+    {
+        return 0U;
+    }
+
+    return parser->token_count;
+}
+
+/* ---------------------------------------------------------------------------
+ * Debug print — only compiled when OK_JSON_DEBUG is defined
+ * ---------------------------------------------------------------------------*/
+
+#ifdef OK_JSON_DEBUG
+
+#include <stdio.h>
+
+static const char *okj_type_name(OkJsonType t)
+{
+    const char *name;
+
+    switch (t)
+    {
+        case OKJ_UNDEFINED: name = "UNDEFINED"; break;
+        case OKJ_OBJECT:    name = "OBJECT";    break;
+        case OKJ_ARRAY:     name = "ARRAY";     break;
+        case OKJ_STRING:    name = "STRING";    break;
+        case OKJ_NUMBER:    name = "NUMBER";    break;
+        case OKJ_BOOLEAN:   name = "BOOLEAN";   break;
+        case OKJ_NULL:      name = "NULL";      break;
+        default:            name = "UNKNOWN";   break;
+    }
+
+    return name;
+}
+
+void okj_debug_print(OkJsonParser *parser)
+{
+    uint16_t i;
+
+    if (parser == NULL)
+    {
+        (void)printf("okj_debug_print: NULL parser\n");
+        return;
+    }
+
+    (void)printf("=== OK_JSON Debug Dump: %u token(s) ===\n",
+                 (unsigned int)parser->token_count);
+
+    for (i = 0U; i < parser->token_count; i++)
+    {
+        OkJsonToken *t    = &parser->tokens[i];
+        uint16_t     dlen = t->length;
+        uint16_t     j;
+
+        if ((t->type == OKJ_OBJECT) || (t->type == OKJ_ARRAY))
+        {
+            dlen = okj_measure_container(t->start);
+        }
+
+        (void)printf("[%3u] type=%-9s len=%3u  val='",
+                     (unsigned int)i,
+                     okj_type_name(t->type),
+                     (unsigned int)dlen);
+
+        if (t->start != NULL)
+        {
+            for (j = 0U; j < dlen; j++)
+            {
+                if (t->start[j] == '\0')
+                {
+                    break;
+                }
+
+                (void)putchar((int)(unsigned char)t->start[j]);
+            }
+        }
+
+        (void)printf("'\n");
+    }
+}
+
+#endif /* OK_JSON_DEBUG */

@@ -479,7 +479,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         }
         else if (parser->json[parser->position] != '"')
         {
-            result = OKJ_ERROR_SYNTAX;
+            /* Position is at '\0': input ended before the closing quote. */
+            result = OKJ_ERROR_UNEXPECTED_END;
         }
         else
         {

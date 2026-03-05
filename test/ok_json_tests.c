@@ -78,6 +78,9 @@ void test_null_value(void);
 void test_key_exactly_64_chars(void);
 void test_key_65_chars_error(void);
 void test_deeply_nested_at_limit(void);
+void test_max_json_len_exceeded(void);
+void test_parse_null_parser(void);
+void test_truncated_backslash_at_eof(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -149,7 +152,7 @@ void test_invalid_json(void)
     okj_init(&parser, json_str);
 
     OkjError result = okj_parse(&parser);
-    assert(result != OKJ_SUCCESS); /* Expect failure */
+    assert(result == OKJ_ERROR_SYNTAX); /* 'k' is not a valid value start */
 
     printf("test_invalid_json passed!\n");
 }
@@ -185,7 +188,7 @@ void test_invalid_string(void)
     char json_str[] = "{\"name\": Alice}";
 
     okj_init(&parser, json_str);
-    assert(okj_parse(&parser) != OKJ_SUCCESS);
+    assert(okj_parse(&parser) == OKJ_ERROR_SYNTAX); /* 'A' is not a valid value start */
 
     printf("test_invalid_string passed!\n");
 }
@@ -546,7 +549,7 @@ void test_truncated_string(void)
     okj_init(&parser, json_str);
     result = okj_parse(&parser);
 
-    assert(result != OKJ_SUCCESS);
+    assert(result == OKJ_ERROR_UNEXPECTED_END); /* EOF before closing '"' */
 
     printf("test_truncated_string passed!\n");
 }
@@ -1348,6 +1351,70 @@ void test_deeply_nested_at_limit(void)
     printf("test_deeply_nested_at_limit passed!\n");
 }
 
+void test_max_json_len_exceeded(void)
+{
+    /* Build a JSON string longer than OKJ_MAX_JSON_LEN (4096) bytes.
+     * The parser must reject it before tokenising and return
+     * OKJ_ERROR_MAX_JSON_LEN_EXCEEDED. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Array of 4098 zeros: '[' + 4096 '0' chars + ']' + '\0' = 4099 bytes.
+     * The raw JSON length (4098 bytes excluding NUL) exceeds the 4096 limit. */
+    char     json_str[4099];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    json_str[pos++] = '[';
+
+    for (i = 0U; i < 4096U; i++)
+    {
+        json_str[pos++] = '0';
+    }
+
+    json_str[pos++] = ']';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_JSON_LEN_EXCEEDED);
+
+    printf("test_max_json_len_exceeded passed!\n");
+}
+
+void test_parse_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return OKJ_ERROR_BAD_POINTER
+     * without accessing any memory. */
+
+    OkjError result = okj_parse(NULL);
+
+    assert(result == OKJ_ERROR_BAD_POINTER);
+
+    printf("test_parse_null_parser passed!\n");
+}
+
+void test_truncated_backslash_at_eof(void)
+{
+    /* A string that ends with a lone backslash (no following escape character)
+     * must return OKJ_ERROR_UNEXPECTED_END, not OKJ_ERROR_SYNTAX. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* JSON: {"k": "val\<EOF>} — backslash is the last byte before NUL */
+    char json_str[] = "{\"k\": \"val\\";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_truncated_backslash_at_eof passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1402,6 +1469,9 @@ int main(int argc, char* argv[])
     test_key_exactly_64_chars();
     test_key_65_chars_error();
     test_deeply_nested_at_limit();
+    test_max_json_len_exceeded();
+    test_parse_null_parser();
+    test_truncated_backslash_at_eof();
 
     printf("All OK_JSON tests passed!\n");
 

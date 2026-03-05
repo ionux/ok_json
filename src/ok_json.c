@@ -41,6 +41,13 @@ static int okj_is_digit(char c)
     return (c >= '0') && (c <= '9');
 }
 
+static int okj_is_hex_digit(char c)
+{
+    return ((c >= '0') && (c <= '9')) ||
+           ((c >= 'a') && (c <= 'f')) ||
+           ((c >= 'A') && (c <= 'F'));
+}
+
 /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
  * Stops early on a NUL byte in `src` to avoid overreads. */
 static int okj_match(const char *src, const char *lit, uint16_t len)
@@ -410,19 +417,62 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
             if (parser->json[parser->position] == '\\')
             {
-                parser->position++;     /* skip backslash */
+                char esc_char;
 
-                if (parser->json[parser->position] == '\0')
+                parser->position++;     /* consume backslash */
+
+                esc_char = parser->json[parser->position];
+
+                if (esc_char == '\0')
                 {
                     break;  /* truncated input: backslash at end of stream */
                 }
-            }
+                else if ((esc_char == '"')  || (esc_char == '\\') ||
+                         (esc_char == '/')  || (esc_char == 'b')  ||
+                         (esc_char == 'f')  || (esc_char == 'n')  ||
+                         (esc_char == 'r')  || (esc_char == 't'))
+                {
+                    parser->position++;     /* consume the escape character */
+                }
+                else if (esc_char == 'u')
+                {
+                    uint16_t h;
 
-            parser->position++;
+                    parser->position++;     /* consume 'u' */
+
+                    for (h = 0U; h < 4U; h++)
+                    {
+                        if (okj_is_hex_digit(parser->json[parser->position]) == 0)
+                        {
+                            result = OKJ_ERROR_BAD_STRING;
+                            break;
+                        }
+
+                        parser->position++;
+                    }
+                }
+                else
+                {
+                    result = OKJ_ERROR_BAD_STRING;
+                }
+
+                if (result != OKJ_SUCCESS)
+                {
+                    break;
+                }
+            }
+            else
+            {
+                parser->position++;
+            }
         }
 
-        if ((parser->json[parser->position] != '"') &&
-            (parser->json[parser->position] != '\0'))
+        if (result != OKJ_SUCCESS)
+        {
+            /* Error set inside loop (e.g. invalid escape sequence). */
+        }
+        else if ((parser->json[parser->position] != '"') &&
+                 (parser->json[parser->position] != '\0'))
         {
             /* Loop exited due to the length limit, not a closing quote. */
             result = OKJ_ERROR_MAX_STR_LEN_EXCEEDED;

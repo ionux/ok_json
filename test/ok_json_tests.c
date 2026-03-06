@@ -81,6 +81,12 @@ void test_deeply_nested_at_limit(void);
 void test_max_json_len_exceeded(void);
 void test_parse_null_parser(void);
 void test_truncated_backslash_at_eof(void);
+void test_copy_string_basic(void);
+void test_copy_string_null_terminated(void);
+void test_copy_string_truncation(void);
+void test_copy_string_exact_fit(void);
+void test_copy_string_null_inputs(void);
+void test_find_key_over_max_len(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1415,6 +1421,183 @@ void test_truncated_backslash_at_eof(void)
     printf("test_truncated_backslash_at_eof passed!\n");
 }
 
+void test_copy_string_basic(void)
+{
+    /* Parse an object, retrieve a string, and verify that okj_copy_string()
+     * writes the correct content into the destination buffer. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[16];
+    uint16_t      copied;
+
+    char json_str[] = "{\"city\": \"Paris\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "city");
+    assert(str != NULL);
+
+    copied = okj_copy_string(str, buf, (uint16_t)sizeof(buf));
+
+    assert(copied == 5U);           /* "Paris" is 5 chars */
+    assert(buf[0] == 'P');
+    assert(buf[4] == 's');
+    assert(buf[5] == '\0');         /* must be null-terminated */
+
+    printf("test_copy_string_basic passed!\n");
+}
+
+void test_copy_string_null_terminated(void)
+{
+    /* Verify that the copied buffer is always null-terminated even when the
+     * source string fills the buffer to its last usable byte. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[6];           /* exactly room for "Paris" + NUL */
+    uint16_t      copied;
+
+    char json_str[] = "{\"city\": \"Paris\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "city");
+    assert(str != NULL);
+
+    copied = okj_copy_string(str, buf, (uint16_t)sizeof(buf));
+
+    assert(copied == 5U);
+    assert(buf[5] == '\0');         /* null terminator must be present */
+
+    printf("test_copy_string_null_terminated passed!\n");
+}
+
+void test_copy_string_truncation(void)
+{
+    /* When the destination buffer is smaller than the string, okj_copy_string()
+     * must copy only (buf_size - 1) bytes and still null-terminate. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[4];           /* only 3 chars fit + NUL */
+    uint16_t      copied;
+
+    char json_str[] = "{\"word\": \"Hello\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "word");
+    assert(str != NULL);
+    assert(str->length == 5U);
+
+    copied = okj_copy_string(str, buf, (uint16_t)sizeof(buf));
+
+    assert(copied == 3U);           /* only 3 chars copied */
+    assert(buf[0] == 'H');
+    assert(buf[1] == 'e');
+    assert(buf[2] == 'l');
+    assert(buf[3] == '\0');         /* must still be null-terminated */
+
+    printf("test_copy_string_truncation passed!\n");
+}
+
+void test_copy_string_exact_fit(void)
+{
+    /* A buffer of exactly (length + 1) bytes must hold the full string
+     * with no truncation and a null terminator at the final position. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[5];           /* "Hi" (2 chars) + NUL, extra space */
+    uint16_t      copied;
+
+    char json_str[] = "{\"k\": \"Hi\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "k");
+    assert(str != NULL);
+    assert(str->length == 2U);
+
+    /* buf_size == length + 1 == 3: exact fit */
+    copied = okj_copy_string(str, buf, 3U);
+
+    assert(copied == 2U);
+    assert(buf[0] == 'H');
+    assert(buf[1] == 'i');
+    assert(buf[2] == '\0');
+
+    printf("test_copy_string_exact_fit passed!\n");
+}
+
+void test_copy_string_null_inputs(void)
+{
+    /* okj_copy_string() must return 0 gracefully for all invalid arguments. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[8];
+    uint16_t      result;
+
+    char json_str[] = "{\"x\": \"abc\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "x");
+    assert(str != NULL);
+
+    /* NULL str pointer */
+    result = okj_copy_string(NULL, buf, (uint16_t)sizeof(buf));
+    assert(result == 0U);
+
+    /* NULL buf pointer */
+    result = okj_copy_string(str, NULL, (uint16_t)sizeof(buf));
+    assert(result == 0U);
+
+    /* buf_size == 0 */
+    result = okj_copy_string(str, buf, 0U);
+    assert(result == 0U);
+
+    printf("test_copy_string_null_inputs passed!\n");
+}
+
+void test_find_key_over_max_len(void)
+{
+    /* When okj_get_string() is called with a key that exceeds OKJ_MAX_STRING_LEN
+     * the lookup must return NULL rather than overreading the key buffer. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON contains a short key "k" mapped to "v". */
+    char json_str[] = "{\"k\": \"v\"}";
+
+    /* A key string of 65 'k' characters (one beyond OKJ_MAX_STRING_LEN). */
+    char long_key[66];
+    uint16_t i;
+
+    for (i = 0U; i < 65U; i++)
+    {
+        long_key[i] = 'k';
+    }
+    long_key[65] = '\0';
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* The long key cannot match the 1-char stored key; must return NULL. */
+    str = okj_get_string(&parser, long_key);
+    assert(str == NULL);
+
+    printf("test_find_key_over_max_len passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1472,6 +1655,12 @@ int main(int argc, char* argv[])
     test_max_json_len_exceeded();
     test_parse_null_parser();
     test_truncated_backslash_at_eof();
+    test_copy_string_basic();
+    test_copy_string_null_terminated();
+    test_copy_string_truncation();
+    test_copy_string_exact_fit();
+    test_copy_string_null_inputs();
+    test_find_key_over_max_len();
 
     printf("All OK_JSON tests passed!\n");
 

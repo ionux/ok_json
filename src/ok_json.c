@@ -31,17 +31,17 @@
  * Internal helpers — no external library dependencies
  * ---------------------------------------------------------------------------*/
 
-static int okj_is_whitespace(char c)
+static uint8_t okj_is_whitespace(char c)
 {
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
 }
 
-static int okj_is_digit(char c)
+static uint8_t okj_is_digit(char c)
 {
     return (c >= '0') && (c <= '9');
 }
 
-static int okj_is_hex_digit(char c)
+static uint8_t okj_is_hex_digit(char c)
 {
     return ((c >= '0') && (c <= '9')) ||
            ((c >= 'a') && (c <= 'f')) ||
@@ -50,10 +50,10 @@ static int okj_is_hex_digit(char c)
 
 /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
  * Stops early on a NUL byte in `src` to avoid overreads. */
-static uint16_t okj_match(const char *src, const char *lit, uint16_t len)
+static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
 {
     uint16_t i = 0U;
-    uint16_t result = 1U;
+    uint8_t result = 1U;
 
     for (i = 0U; i < len; i++)
     {

@@ -684,7 +684,7 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
     uint16_t i       = 0U;
     uint16_t key_len = 0U;
 
-    while (key[key_len] != '\0')
+    while ((key[key_len] != '\0') && (key_len <= OKJ_MAX_STRING_LEN))
     {
         key_len++;
     }
@@ -893,6 +893,34 @@ OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key)
     s_full_object_result.length = okj_measure_container(parser->tokens[idx].start);
 
     return &s_full_object_result;
+}
+
+uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
+{
+    uint16_t copy_len = 0U;
+    uint16_t i        = 0U;
+
+    if ((str == NULL) || (buf == NULL) || (buf_size == 0U))
+    {
+        return 0U;
+    }
+
+    /* Copy at most (buf_size - 1) bytes to leave room for the null terminator. */
+    copy_len = str->length;
+
+    if (copy_len >= buf_size)
+    {
+        copy_len = (uint16_t)(buf_size - 1U);
+    }
+
+    for (i = 0U; i < copy_len; i++)
+    {
+        buf[i] = str->start[i];
+    }
+
+    buf[copy_len] = '\0';
+
+    return copy_len;
 }
 
 uint16_t okj_count_objects(OkJsonParser *parser)

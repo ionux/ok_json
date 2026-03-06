@@ -311,6 +311,19 @@ OkJsonArray *okj_get_array_raw(OkJsonParser *parser, const char *key);
 OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key);
 
 /**
+ * @brief Copy a parsed string value into a caller-supplied buffer with
+ *        guaranteed null-termination.  At most @p buf_size - 1 bytes of
+ *        string content are copied; the buffer is always null-terminated
+ *        when @p buf_size >= 1.
+ * @param str      Pointer to an OkJsonString returned by okj_get_string()
+ * @param buf      Destination buffer supplied by the caller
+ * @param buf_size Total size of @p buf in bytes (must be >= 1)
+ * @return Number of characters copied (excluding the null terminator), or 0
+ *         on error (NULL inputs or buf_size == 0)
+ **/
+uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size);
+
+/**
  * @brief Return the total number of OKJ_OBJECT tokens in the parsed result.
  *        Counts every object opening brace that was tokenised, including
  *        nested objects.

@@ -2,6 +2,8 @@
 
 ## Description
 
+!! This is currently a work in progress. !!
+
 Simple, light, and clean JSON parser suitable for embedded, memory-constrained,
 and safety-critical projects. Written in pure C99 for maximum portability.
 Zero external library dependencies (`stdio.h`, `string.h`, and `ctype.h` are

@@ -19,4 +19,4 @@ jobs:
         run: make test
 
       - name: Memory check with Valgrind
-        run: valgrind --leak-check=full ./test/ok_json_test_runner
+        run: valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1 ./test/ok_json_test_runner

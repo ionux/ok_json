@@ -50,19 +50,20 @@ static int okj_is_hex_digit(char c)
 
 /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
  * Stops early on a NUL byte in `src` to avoid overreads. */
-static int okj_match(const char *src, const char *lit, uint16_t len)
+static uint16_t okj_match(const char *src, const char *lit, uint16_t len)
 {
     uint16_t i = 0U;
+    uint16_t result = 1U;
 
     for (i = 0U; i < len; i++)
     {
         if ((src[i] == '\0') || (src[i] != lit[i]))
         {
-            return 0U;
+            result = 0U;
         }
     }
 
-    return 1U;
+    return result;
 }
 
 /* ---------------------------------------------------------------------------

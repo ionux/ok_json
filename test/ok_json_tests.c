@@ -87,6 +87,13 @@ void test_copy_string_truncation(void);
 void test_copy_string_exact_fit(void);
 void test_copy_string_null_inputs(void);
 void test_find_key_over_max_len(void);
+void test_depth_stack_bracket_mismatch_obj(void);
+void test_depth_stack_bracket_mismatch_arr(void);
+void test_depth_stack_extra_close_brace(void);
+void test_depth_stack_extra_close_bracket(void);
+void test_depth_stack_unclosed_object(void);
+void test_depth_stack_unclosed_array(void);
+void test_depth_stack_mixed_nesting(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1286,73 +1293,73 @@ void test_key_65_chars_error(void)
 void test_deeply_nested_at_limit(void)
 {
     /* Build a deeply nested object: {"a":{"a":{"a":...{"a":1}...}}}
-     * with enough levels to push the token count beyond OKJ_MAX_TOKENS (128).
+     * and verify the depth-stack ceiling (OKJ_MAX_DEPTH) is enforced.
      *
      * Token count for N levels = 2*N + 1 (N objects + N string keys + 1 number).
-     * At N=63: 127 tokens  -> OKJ_SUCCESS
-     * At N=64: 129 tokens  -> OKJ_ERROR_MAX_TOKENS_EXCEEDED
-     *
-     * Both outcomes are deterministic and safe; neither is a crash or
-     * silent corruption. */
+     * At N = OKJ_MAX_DEPTH   (16): uses all 16 slots exactly -> OKJ_SUCCESS
+     * At N = OKJ_MAX_DEPTH+1 (17): opening the 17th '{' tries to push beyond
+     *                               the last slot -> OKJ_ERROR_MAX_DEPTH_EXCEEDED */
 
     OkJsonParser parser;
     OkjError     result;
+    uint16_t     i;
+    uint16_t     pos;
 
-    /* N=63: 63*5 + 1 + 63 = 379 chars + NUL = 380 bytes */
-    char json63[380];
-    uint16_t pos = 0U;
-    uint16_t i;
+    /* N=16: 16*5 + 1 + 16 = 97 chars + NUL = 98 bytes */
+    char json16[98];
+    pos = 0U;
 
-    for (i = 0U; i < 63U; i++)
+    for (i = 0U; i < 16U; i++)
     {
-        json63[pos++] = '{';
-        json63[pos++] = '"';
-        json63[pos++] = 'a';
-        json63[pos++] = '"';
-        json63[pos++] = ':';
+        json16[pos++] = '{';
+        json16[pos++] = '"';
+        json16[pos++] = 'a';
+        json16[pos++] = '"';
+        json16[pos++] = ':';
     }
 
-    json63[pos++] = '1';
+    json16[pos++] = '1';
 
-    for (i = 0U; i < 63U; i++)
+    for (i = 0U; i < 16U; i++)
     {
-        json63[pos++] = '}';
+        json16[pos++] = '}';
     }
 
-    json63[pos] = '\0';
+    json16[pos] = '\0';
 
-    okj_init(&parser, json63);
+    okj_init(&parser, json16);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
-    assert(parser.token_count == 127U);  /* 2*63 + 1 */
+    assert(parser.token_count == 33U);  /* 2*16 + 1 */
+    assert(parser.depth == 0U);         /* all containers closed */
 
-    /* N=64: 64*5 + 1 + 64 = 385 chars + NUL = 386 bytes */
-    char json64[386];
+    /* N=17: 17*5 + 1 + 17 = 103 chars + NUL = 104 bytes */
+    char json17[104];
     pos = 0U;
 
-    for (i = 0U; i < 64U; i++)
+    for (i = 0U; i < 17U; i++)
     {
-        json64[pos++] = '{';
-        json64[pos++] = '"';
-        json64[pos++] = 'a';
-        json64[pos++] = '"';
-        json64[pos++] = ':';
+        json17[pos++] = '{';
+        json17[pos++] = '"';
+        json17[pos++] = 'a';
+        json17[pos++] = '"';
+        json17[pos++] = ':';
     }
 
-    json64[pos++] = '1';
+    json17[pos++] = '1';
 
-    for (i = 0U; i < 64U; i++)
+    for (i = 0U; i < 17U; i++)
     {
-        json64[pos++] = '}';
+        json17[pos++] = '}';
     }
 
-    json64[pos] = '\0';
+    json17[pos] = '\0';
 
-    okj_init(&parser, json64);
+    okj_init(&parser, json17);
     result = okj_parse(&parser);
 
-    assert(result == OKJ_ERROR_MAX_TOKENS_EXCEEDED);
+    assert(result == OKJ_ERROR_MAX_DEPTH_EXCEEDED);
 
     printf("test_deeply_nested_at_limit passed!\n");
 }
@@ -1598,6 +1605,126 @@ void test_find_key_over_max_len(void)
     printf("test_find_key_over_max_len passed!\n");
 }
 
+void test_depth_stack_bracket_mismatch_obj(void)
+{
+    /* An object opened with '{' but closed with ']' must be rejected with
+     * OKJ_ERROR_BRACKET_MISMATCH rather than silently consuming the ']'. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"k\": 1]";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_depth_stack_bracket_mismatch_obj passed!\n");
+}
+
+void test_depth_stack_bracket_mismatch_arr(void)
+{
+    /* An array opened with '[' but closed with '}' must be rejected with
+     * OKJ_ERROR_BRACKET_MISMATCH. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "[1, 2}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_depth_stack_bracket_mismatch_arr passed!\n");
+}
+
+void test_depth_stack_extra_close_brace(void)
+{
+    /* A lone '}' with no matching '{' at depth 0 must be rejected with
+     * OKJ_ERROR_BRACKET_MISMATCH. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_depth_stack_extra_close_brace passed!\n");
+}
+
+void test_depth_stack_extra_close_bracket(void)
+{
+    /* A lone ']' with no matching '[' at depth 0 must be rejected with
+     * OKJ_ERROR_BRACKET_MISMATCH. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "]";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_depth_stack_extra_close_bracket passed!\n");
+}
+
+void test_depth_stack_unclosed_object(void)
+{
+    /* An object whose closing '}' is absent must be rejected.
+     * The depth check at end-of-input produces OKJ_ERROR_UNEXPECTED_END. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"key\": 42";   /* missing closing '}' */
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_depth_stack_unclosed_object passed!\n");
+}
+
+void test_depth_stack_unclosed_array(void)
+{
+    /* An array whose closing ']' is absent must be rejected.
+     * The depth check at end-of-input produces OKJ_ERROR_UNEXPECTED_END. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "[1, 2, 3";   /* missing closing ']' */
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_depth_stack_unclosed_array passed!\n");
+}
+
+void test_depth_stack_mixed_nesting(void)
+{
+    /* Verify that the stack correctly tracks alternating object/array
+     * container types: {"arr": [{"x": 1}]} */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"arr\": [{\"x\": 1}]}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.depth == 0U);   /* all containers closed */
+
+    printf("test_depth_stack_mixed_nesting passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1661,6 +1788,13 @@ int main(int argc, char* argv[])
     test_copy_string_exact_fit();
     test_copy_string_null_inputs();
     test_find_key_over_max_len();
+    test_depth_stack_bracket_mismatch_obj();
+    test_depth_stack_bracket_mismatch_arr();
+    test_depth_stack_extra_close_brace();
+    test_depth_stack_extra_close_bracket();
+    test_depth_stack_unclosed_object();
+    test_depth_stack_unclosed_array();
+    test_depth_stack_mixed_nesting();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -337,9 +337,15 @@ void okj_init(OkJsonParser *parser, char *json_string)
             parser->tokens[i].length = 0U;
         }
 
+        for (i = 0U; i < (uint16_t)OKJ_MAX_DEPTH; i++)
+        {
+            parser->depth_stack[i] = OKJ_UNDEFINED;
+        }
+
         parser->json        = json_string;
         parser->position    = 0U;
         parser->token_count = 0U;
+        parser->depth       = 0U;
     }
 }
 
@@ -376,25 +382,61 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     }
     else if (c == '{')
     {
+        if (parser->depth >= (uint16_t)OKJ_MAX_DEPTH)
+        {
+            return OKJ_ERROR_MAX_DEPTH_EXCEEDED;
+        }
+
         tok         = &parser->tokens[parser->token_count];
         tok->type   = OKJ_OBJECT;
         tok->start  = &parser->json[parser->position];
         tok->length = 1U;
+
+        parser->depth_stack[parser->depth] = OKJ_OBJECT;
+        parser->depth++;
         parser->position++;
         parser->token_count++;
     }
     else if (c == '[')
     {
+        if (parser->depth >= (uint16_t)OKJ_MAX_DEPTH)
+        {
+            return OKJ_ERROR_MAX_DEPTH_EXCEEDED;
+        }
+
         tok         = &parser->tokens[parser->token_count];
         tok->type   = OKJ_ARRAY;
         tok->start  = &parser->json[parser->position];
         tok->length = 1U;
 
+        parser->depth_stack[parser->depth] = OKJ_ARRAY;
+        parser->depth++;
         parser->position++;
         parser->token_count++;
     }
     else if ((c == '}') || (c == ']') || (c == ',') || (c == ':'))
     {
+        if ((c == '}') || (c == ']'))
+        {
+            /* Validate the closing bracket against the depth stack. */
+            if (parser->depth == 0U)
+            {
+                return OKJ_ERROR_BRACKET_MISMATCH;
+            }
+
+            parser->depth--;
+
+            if ((c == '}') && (parser->depth_stack[parser->depth] != OKJ_OBJECT))
+            {
+                return OKJ_ERROR_BRACKET_MISMATCH;
+            }
+
+            if ((c == ']') && (parser->depth_stack[parser->depth] != OKJ_ARRAY))
+            {
+                return OKJ_ERROR_BRACKET_MISMATCH;
+            }
+        }
+
         /* Structural punctuation — advance past it, emit no token. */
         parser->position++;
     }
@@ -668,6 +710,12 @@ OkjError okj_parse(OkJsonParser *parser)
         (parser->json[parser->position] != '\0'))
     {
         result = OKJ_ERROR_MAX_TOKENS_EXCEEDED;
+    }
+
+    /* Any containers still open at end-of-input indicate truncated input. */
+    if ((result == OKJ_SUCCESS) && (parser->depth != 0U))
+    {
+        result = OKJ_ERROR_UNEXPECTED_END;
     }
 
     return result;

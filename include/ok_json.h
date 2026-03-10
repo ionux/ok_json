@@ -103,6 +103,22 @@ static const char OKJ_VALID_CHARS[96] = {
 };
 
 /**
+ * @brief Grammar context used internally to validate token sequence during
+ * parsing.  Tracks what the parser currently expects next so that structural
+ * errors (trailing commas, missing colons, non-string object keys, etc.) are
+ * detected immediately rather than after the fact.
+ **/
+typedef enum
+{
+    OKJ_CTX_WANT_VALUE,          /* Expecting any JSON value (no close yet)        */
+    OKJ_CTX_WANT_VALUE_OR_CLOSE, /* Expecting a value OR ']' (just opened array)   */
+    OKJ_CTX_WANT_KEY,            /* Expecting an object key string (no close)      */
+    OKJ_CTX_WANT_KEY_OR_CLOSE,   /* Expecting a key string OR '}' (just opened {}) */
+    OKJ_CTX_WANT_COLON,          /* Expecting ':' after an object key              */
+    OKJ_CTX_WANT_SEP_OR_CLOSE    /* Expecting ',' or the matching close bracket    */
+} OkjParseContext;
+
+/**
  * @brief OK_JSON error/return codes
  **/
 typedef enum
@@ -205,12 +221,13 @@ typedef struct
  **/
 typedef struct
 {
-    OkJsonToken tokens[OKJ_MAX_TOKENS];      /* Fixed-size token storage     */
-    OkJsonType  depth_stack[OKJ_MAX_DEPTH];  /* Container-type at each depth */
-    uint16_t    token_count;                 /* Number of parsed tokens      */
-    uint16_t    depth;                       /* Current nesting depth        */
-    char       *json;                        /* Pointer to input JSON string */
-    uint16_t    position;                    /* Current parsing position     */
+    OkJsonToken    tokens[OKJ_MAX_TOKENS];      /* Fixed-size token storage     */
+    OkJsonType     depth_stack[OKJ_MAX_DEPTH];  /* Container-type at each depth */
+    OkjParseContext context;                    /* Current grammar expectation  */
+    uint16_t       token_count;                 /* Number of parsed tokens      */
+    uint16_t       depth;                       /* Current nesting depth        */
+    char          *json;                        /* Pointer to input JSON string */
+    uint16_t       position;                    /* Current parsing position     */
 } OkJsonParser;
 
 

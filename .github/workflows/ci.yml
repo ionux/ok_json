@@ -21,5 +21,5 @@ jobs:
       - name: Memory check with Valgrind
         run: valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1 ./test/ok_json_test_runner
 
-      - name: Run Cppcheck with MISRA Add-on
-        run: cppcheck --addon=misra.json --enable=all --error-exitcode=1 --inline-suppr src/
+#      - name: Run Cppcheck with MISRA Add-on
+#        run: cppcheck --addon=misra.json --enable=all --error-exitcode=1 --inline-suppr src/

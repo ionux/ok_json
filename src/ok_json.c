@@ -685,8 +685,10 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
 OkjError okj_parse(OkJsonParser *parser)
 {
-    OkjError result  = OKJ_SUCCESS;
-    uint16_t json_len = 0U;
+    OkjError result      = OKJ_SUCCESS;
+    uint16_t json_len    = 0U;
+    uint16_t prev_tokens = 0U;
+    uint16_t prev_depth  = 0U;
 
     if (parser == NULL)
     {
@@ -706,11 +708,34 @@ OkjError okj_parse(OkJsonParser *parser)
     while ((parser->json[parser->position] != '\0') &&
            (parser->token_count < OKJ_MAX_TOKENS))
     {
+        prev_tokens = parser->token_count;
+        prev_depth  = parser->depth;
+
         result = okj_parse_value(parser);
 
         if (result != OKJ_SUCCESS)
         {
             break;
+        }
+
+        /* Detect completion of the single top-level value:
+         *  - A primitive was emitted at depth 0 (depth stayed 0, new token added), or
+         *  - A container was fully closed back to depth 0 (depth dropped from > 0).
+         * RFC 8259 §2 permits exactly one top-level value; anything other than
+         * optional whitespace that follows it is a syntax error. */
+        if (parser->depth == 0U)
+        {
+            if ((prev_depth > 0U) || (parser->token_count > prev_tokens))
+            {
+                okj_skip_whitespace(parser);
+
+                if (parser->json[parser->position] != '\0')
+                {
+                    result = OKJ_ERROR_SYNTAX;
+                }
+
+                break;
+            }
         }
     }
 

@@ -6,11 +6,26 @@ by embedded developers as a minimal, dependency-free library.
 
 ---
 
-## Current State Summary (updated 2026-03-05)
+## Current State Summary (updated 2026-03-10)
 
-**MVP is complete.** All 13 tests pass. The build is clean (zero warnings,
-zero errors). All six getter functions are implemented. The library has zero
-stdlib dependencies in `ok_json.c`. The CI Valgrind path is correct.
+**MVP is complete and post-MVP work is ongoing.** All 65 tests pass. The build
+is clean (zero warnings, zero errors). The library has zero stdlib dependencies
+in `ok_json.c`. The CI Valgrind path is correct.
+
+Post-MVP additions since the original MVP completion:
+- RFC 8259 number exponent notation (`1e10`, `2.5E-3`)
+- Full string escape sequence handling (`\"`, `\\`, `\/`, `\b`, `\f`, `\n`,
+  `\r`, `\t`, `\uXXXX`)
+- `OKJ_MAX_STRING_LEN` enforcement during string scanning
+- `count` field population in `okj_get_array()` and `okj_get_object()`
+- Raw container getters: `okj_get_array_raw()`, `okj_get_object_raw()`
+- `okj_copy_string()` safe-copy helper
+- Counting helpers: `okj_count_objects()`, `okj_count_arrays()`, `okj_count_elements()`
+- `OKJ_MAX_JSON_LEN` input-length check in `okj_parse()`
+- Fixed-size depth/state stack: `depth_stack[OKJ_MAX_DEPTH]` and `depth` in
+  `OkJsonParser`; bracket matching and depth ceiling (`OKJ_MAX_DEPTH=16`);
+  two new error codes (`OKJ_ERROR_MAX_DEPTH_EXCEEDED`, `OKJ_ERROR_BRACKET_MISMATCH`)
+- Test suite grown from 13 to 65 tests
 
 The sections below are preserved for historical reference, with status
 annotations added. Open items have been moved to the TODO_LIST.
@@ -77,7 +92,7 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 | 10 | Replace `isdigit()` with a range check | ✅ Done (`okj_is_digit`) |
 | 11 | Replace `strncmp()` for boolean/null detection with `okj_match()` | ✅ Done |
 | 12 | Remove `#include <ctype.h>` and `#include <string.h>` | ✅ Done |
-| 13 | Refactor `okj_parse()` to single-return (MISRA) | ✅ Done for `okj_parse()`; `okj_parse_value()` retains one early-return on NULL — see TODO_LIST |
+| 13 | Refactor `okj_parse()` to single-return (MISRA) | ✅ Done for `okj_parse()`; `okj_parse_value()` retains multiple early-returns (NULL guard + depth-stack errors) — see TODO_LIST |
 
 ### Phase 3 — Implement getter functions ✅ COMPLETE
 
@@ -87,17 +102,17 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 | 15 | `okj_get_string()` | ✅ Implemented |
 | 16 | `okj_get_number()` | ✅ Implemented |
 | 17 | `okj_get_boolean()` | ✅ Implemented |
-| 18 | `okj_get_array()` | ✅ Implemented (count field not yet populated — see TODO_LIST) |
-| 19 | `okj_get_object()` | ✅ Implemented (count field not yet populated — see TODO_LIST) |
+| 18 | `okj_get_array()` | ✅ Implemented (count field now populated — done post-MVP) |
+| 19 | `okj_get_object()` | ✅ Implemented (count field now populated — done post-MVP) |
 
 ### Phase 4 — Test suite and CI ✅ COMPLETE
 
 | # | Task | Status |
 |---|------|--------|
 | 20 | Fix CI Valgrind path: `./tests/` → `./test/` in `ci.yml` | ✅ Already correct |
-| 21 | Add tests for each getter function once implemented | ✅ Done (13 tests total) |
+| 21 | Add tests for each getter function once implemented | ✅ Done (65 tests total) |
 | 22 | Add test for `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | ✅ `test_max_tokens_exceeded` |
-| 23 | Add test for deeply nested JSON rejection | ⬜ Not yet added — see TODO_LIST |
+| 23 | Add test for deeply nested JSON rejection | ✅ `test_deeply_nested_at_limit` (updated post-MVP to exercise depth ceiling) |
 | 24 | Add test for `OKJ_ERROR_UNEXPECTED_END` (truncated JSON) | ✅ `test_truncated_string` |
 
 ### Phase 5 — Documentation and polish ✅ COMPLETE
@@ -111,22 +126,28 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 
 ---
 
-## Out of Scope for MVP (unchanged — deferred)
+## Out of Scope for MVP (status updated)
 
-- **Full MISRA C2012 compliance** — requires a MISRA-capable toolchain and
-  formal analysis.
-- **Nested structure depth tracking** — the current flat token model handles
-  one level of nesting adequately for many embedded use cases.
-- **Unicode / escape sequence handling in strings** — `\uXXXX`, `\\`, `\"` etc.
-- **Floating-point exponent notation** — `1e10`, `1.5E-3` not yet handled.
-- **Configurable size limits** — `OKJ_MAX_TOKENS` etc. are compile-time only.
+- **Full MISRA C2012 compliance** — still requires a MISRA-capable toolchain
+  and formal analysis.  `okj_parse_value()` still has multiple early-returns;
+  see TODO_LIST.
+- **Nested structure depth tracking** — ✅ Implemented post-MVP.  A fixed-size
+  16-slot depth/state stack now lives in `OkJsonParser`; bracket matching and
+  depth ceiling enforced during parsing.
+- **Unicode / escape sequence handling in strings** — ✅ Implemented post-MVP.
+  All RFC 8259 escape sequences (`\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`,
+  `\t`, `\uXXXX`) are recognised; `\uXXXX` requires exactly 4 hex digits.
+- **Floating-point exponent notation** — ✅ Implemented post-MVP.  `e`/`E`
+  with optional sign and 1+ digits handled per RFC 8259 §6.
+- **Configurable size limits** — still compile-time only (`OKJ_MAX_TOKENS`,
+  `OKJ_MAX_DEPTH`, `OKJ_MAX_STRING_LEN`, etc.).
 
 ---
 
 ## Definition of Done (MVP) — ✅ ALL MET
 
 1. ✅ `make` completes with zero warnings and zero errors.
-2. ✅ `make test` runs and all 13 tests pass.
+2. ✅ `make test` runs and all tests pass (13 at MVP; 65 as of 2026-03-10).
 3. ✅ The Valgrind step in CI references the correct binary path.
 4. ✅ No `printf` debug statements remain in `ok_json.c`.
 5. ✅ `ok_json.c` does not `#include <ctype.h>`, `<string.h>`, or `<stdio.h>`.

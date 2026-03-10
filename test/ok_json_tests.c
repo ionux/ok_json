@@ -94,6 +94,12 @@ void test_depth_stack_extra_close_bracket(void);
 void test_depth_stack_unclosed_object(void);
 void test_depth_stack_unclosed_array(void);
 void test_depth_stack_mixed_nesting(void);
+void test_trailing_whitespace_after_object(void);
+void test_trailing_garbage_after_object(void);
+void test_trailing_garbage_after_array(void);
+void test_trailing_garbage_after_primitive(void);
+void test_two_top_level_primitives(void);
+void test_two_top_level_objects(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1725,6 +1731,106 @@ void test_depth_stack_mixed_nesting(void)
     printf("test_depth_stack_mixed_nesting passed!\n");
 }
 
+void test_trailing_whitespace_after_object(void)
+{
+    /* Trailing whitespace after a valid top-level object must be accepted. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"x\": 1}   ";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+
+    printf("test_trailing_whitespace_after_object passed!\n");
+}
+
+void test_trailing_garbage_after_object(void)
+{
+    /* Non-whitespace content after a complete top-level object must be
+     * rejected with OKJ_ERROR_SYNTAX. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"x\": 1} garbage";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_trailing_garbage_after_object passed!\n");
+}
+
+void test_trailing_garbage_after_array(void)
+{
+    /* Non-whitespace content after a complete top-level array must be
+     * rejected with OKJ_ERROR_SYNTAX. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "[1, 2, 3] x";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_trailing_garbage_after_array passed!\n");
+}
+
+void test_trailing_garbage_after_primitive(void)
+{
+    /* Non-whitespace content after a top-level primitive value must be
+     * rejected with OKJ_ERROR_SYNTAX. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "42 extra";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_trailing_garbage_after_primitive passed!\n");
+}
+
+void test_two_top_level_primitives(void)
+{
+    /* Two consecutive top-level primitive values must be rejected because
+     * a JSON text contains exactly one top-level value (RFC 8259 §2). */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "true false";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_two_top_level_primitives passed!\n");
+}
+
+void test_two_top_level_objects(void)
+{
+    /* Two consecutive top-level objects must be rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{} {}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_two_top_level_objects passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1795,6 +1901,12 @@ int main(int argc, char* argv[])
     test_depth_stack_unclosed_object();
     test_depth_stack_unclosed_array();
     test_depth_stack_mixed_nesting();
+    test_trailing_whitespace_after_object();
+    test_trailing_garbage_after_object();
+    test_trailing_garbage_after_array();
+    test_trailing_garbage_after_primitive();
+    test_two_top_level_primitives();
+    test_two_top_level_objects();
 
     printf("All OK_JSON tests passed!\n");
 

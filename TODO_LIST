@@ -1,16 +1,18 @@
 Items that I want/need to work on:
 
-MVP is complete as of 2026-03-05. All 18 tests pass. Zero stdlib dependencies.
+MVP is complete as of 2026-03-05. All 65 tests pass. Zero stdlib dependencies.
 See MVP_ROADMAP.md for the full historical task list with completion status.
 
 Post-MVP items remaining:
 
 * Apply MISRA C2012 single-return to okj_parse_value().
-  Currently has one early return on the NULL-pointer guard (line ~115).
-  Requires restructuring with a result variable, same pattern used in
+  The function now has multiple early returns: one for the NULL-pointer guard
+  and several added by the depth-stack implementation (OKJ_ERROR_MAX_DEPTH_EXCEEDED
+  on push overflow, OKJ_ERROR_BRACKET_MISMATCH on close mismatch or underflow).
+  Requires restructuring with a single result variable, the same pattern used in
   okj_parse().  Full MISRA compliance requires a MISRA-capable toolchain and
   formal analysis; continue deferring the toolchain requirement, but the code
-  change itself is small.
+  change itself is achievable without toolchain support.
 
 * Remove or repurpose test/ok_json_test_runner.c. (deferred by user)
   The file currently contains only "/* placeholder */" and is not compiled by
@@ -24,26 +26,38 @@ Post-MVP items remaining:
   duplicated into every translation unit that includes the header, wasting
   ROM.  Intended to be used for string character validation in the future.
 
-* Add test for deeply nested JSON input.
-  The test suite has no case that exercises behaviour at the nesting boundary
-  (e.g., objects nested inside objects).  Define whether the parser should
-  return an error or silently parse what it can, then add a test that asserts
-  the chosen behaviour.
-
-* Add exponent notation support for numbers.
-  The number scanner handles digits and '.', but does not handle 'e' or 'E'
-  exponent syntax (e.g., 1e10, 2.5E-3).  Acceptable for many embedded use
-  cases; add when needed.
-
-* Add more tests for boundary and error conditions.
-  Suggested additions:
-    - Nested object inside object (tests nesting behaviour)
-    - Nested array inside object (tests mixed nesting)
-    - Number with exponent (tests rejection or acceptance once implemented)
-    - Empty object {} and empty array []
-    - Key with length at and above OKJ_MAX_STRING_LEN boundary
-
 Completed post-MVP items:
+
+* [DONE] Implement fixed-size depth/state stack with bracket matching, depth
+  ceiling, and container-type tracking (2026-03-10).
+  OkJsonParser now carries a depth_stack[OKJ_MAX_DEPTH] array (OKJ_MAX_DEPTH=16)
+  and a depth counter.  Opening '{' or '[' pushes the container type (OKJ_OBJECT
+  or OKJ_ARRAY) and increments depth; exceeding the ceiling returns
+  OKJ_ERROR_MAX_DEPTH_EXCEEDED (error code 18).  Closing '}' or ']' pops and
+  validates the type, returning OKJ_ERROR_BRACKET_MISMATCH (error code 19) on
+  any mismatch or underflow.  After the parse loop, depth != 0 returns
+  OKJ_ERROR_UNEXPECTED_END to catch truncated input.  test_deeply_nested_at_limit
+  was updated to test the depth ceiling; seven new tests were added covering
+  bracket mismatch, extra close delimiters, unclosed containers, and correct
+  mixed-nesting tracking.
+
+* [DONE] Add test for deeply nested JSON input.
+  test_deeply_nested_at_limit now exercises the depth-stack ceiling: N=16 levels
+  (all 16 slots filled exactly) returns OKJ_SUCCESS; N=17 (overflow) returns
+  OKJ_ERROR_MAX_DEPTH_EXCEEDED.
+
+* [DONE] Add exponent notation support for numbers.
+  The number scanner handles 'e'/'E' with optional sign and 1+ digits, per
+  RFC 8259 §6.  Tests: test_number_exponent, test_number_invalid_exponent_no_digits.
+
+* [DONE] Add more tests for boundary and error conditions.
+  All originally listed additions are now covered:
+    - Nested object inside object: test_nested_object
+    - Nested array inside object: test_nested_array_in_object
+    - Number with exponent: test_number_exponent
+    - Empty object {} and empty array []: test_empty_object, test_empty_array
+    - Key length at and above OKJ_MAX_STRING_LEN: test_key_exactly_64_chars,
+      test_key_65_chars_error
 
 * [DONE] Populate the count field in okj_get_array() and okj_get_object().
   Both functions now walk the raw JSON text to count array elements (by

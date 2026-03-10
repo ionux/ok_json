@@ -506,6 +506,15 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             }
             else
             {
+                /* RFC 8259 §7: bare control characters (U+0000–U+001F) are
+                 * forbidden inside strings; they must be represented as
+                 * escape sequences (e.g. \n, \t, \uXXXX). */
+                if ((unsigned char)parser->json[parser->position] < 0x20U)
+                {
+                    result = OKJ_ERROR_BAD_STRING;
+                    break;
+                }
+
                 parser->position++;
             }
         }

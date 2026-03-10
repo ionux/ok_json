@@ -56,6 +56,15 @@ typedef unsigned char      uint8_t;
 #define OKJ_MAX_TOKENS 128U
 
 /**
+ * @brief Maximum nesting depth for JSON containers (objects and arrays).
+ * Defined as a preprocessor macro so it can be used as an array dimension in
+ * struct definitions.  The parser rejects input that would exceed this many
+ * concurrently open containers (RFC 8259 imposes no limit, but this bound
+ * protects embedded targets from unbounded stack growth).
+ **/
+#define OKJ_MAX_DEPTH 16U
+
+/**
  * @brief Maximum key or string length
  **/
 static const uint16_t OKJ_MAX_STRING_LEN = 64U;
@@ -115,7 +124,9 @@ typedef enum
     OKJ_ERROR_INVALID_TYPE_ENUM    = 14,
     OKJ_ERROR_NO_FREE_SPACE        = 15,
     OKJ_ERROR_PARSING_FAILED       = 16,
-    OKJ_ERROR_MAX_JSON_LEN_EXCEEDED = 17
+    OKJ_ERROR_MAX_JSON_LEN_EXCEEDED = 17,
+    OKJ_ERROR_MAX_DEPTH_EXCEEDED   = 18,
+    OKJ_ERROR_BRACKET_MISMATCH     = 19
 } OkjError;
 
 /**
@@ -195,9 +206,11 @@ typedef struct
 typedef struct
 {
     OkJsonToken tokens[OKJ_MAX_TOKENS];      /* Fixed-size token storage     */
-    uint16_t token_count;                    /* Number of parsed tokens      */
-    char *json;                              /* Pointer to input JSON string */
-    uint16_t position;                       /* Current parsing position     */
+    OkJsonType  depth_stack[OKJ_MAX_DEPTH];  /* Container-type at each depth */
+    uint16_t    token_count;                 /* Number of parsed tokens      */
+    uint16_t    depth;                       /* Current nesting depth        */
+    char       *json;                        /* Pointer to input JSON string */
+    uint16_t    position;                    /* Current parsing position     */
 } OkJsonParser;
 
 

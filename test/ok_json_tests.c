@@ -125,6 +125,7 @@ void test_top_level_null(void);
 void test_iot_sensor_json(void);
 void test_user_data_json(void);
 void test_deeply_nested_valid_json(void);
+void test_upper_limits_json(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -2674,6 +2675,180 @@ void test_deeply_nested_valid_json(void)
     printf("test_deeply_nested_valid_json passed!\n");
 }
 
+void test_upper_limits_json(void)
+{
+    /* Parse a JSON object that simultaneously exercises multiple parser limits:
+     *
+     *   maxLengthStringTest63Chrs  — string value of 63 bytes, one below the
+     *                                OKJ_MAX_STRING_LEN (64) ceiling
+     *   largeArrayTest             — array of 60 integers, near OKJ_MAX_ARRAY_SIZE (64)
+     *   deepNestingTest            — 14 levels of nesting, two below OKJ_MAX_DEPTH (16)
+     *   k1–k16                     — 16 flat key-value pairs covering every primitive
+     *                                type: boolean (true/false), null, integer,
+     *                                float, and string
+     *
+     * Parser limit summary:
+     *   Tokens used:          125  of 128  (OKJ_MAX_TOKENS)
+     *   Root object members:   19  of  32  (OKJ_MAX_OBJECT_SIZE)
+     *   Array elements:        60  of  64  (OKJ_MAX_ARRAY_SIZE)
+     *   Max nesting depth:     14  of  16  (OKJ_MAX_DEPTH)
+     *   String value length:   63  of  64  (OKJ_MAX_STRING_LEN)
+     *
+     * Token budget (125 total):
+     *    1   root OKJ_OBJECT
+     *    2   maxLengthStringTest63Chrs: key + STRING value
+     *   62   largeArrayTest: key + OKJ_ARRAY + 60 OKJ_NUMBER elements
+     *   28   deepNestingTest: key + 13 OKJ_OBJECTs + 13 inner keys + "d15" key + "max" STRING
+     *   32   k1–k16: 16 key-value pairs
+     */
+
+    OkJsonParser   parser;
+    OkJsonString  *str;
+    OkJsonNumber  *num;
+    OkJsonBoolean *bval;
+    OkJsonArray   *arr;
+    OkJsonObject  *obj;
+    OkJsonToken   *tok;
+
+    char json_str[] =
+        "{"
+        "\"maxLengthStringTest63Chrs\":"
+            "\"123456789012345678901234567890123456789012345678901234567890123\","
+        "\"largeArrayTest\":["
+            "1,2,3,4,5,6,7,8,9,10,"
+            "11,12,13,14,15,16,17,18,19,20,"
+            "21,22,23,24,25,26,27,28,29,30,"
+            "31,32,33,34,35,36,37,38,39,40,"
+            "41,42,43,44,45,46,47,48,49,50,"
+            "51,52,53,54,55,56,57,58,59,60"
+        "],"
+        "\"deepNestingTest\":{"
+            "\"d3\":{"
+                "\"d4\":{"
+                    "\"d5\":{"
+                        "\"d6\":{"
+                            "\"d7\":{"
+                                "\"d8\":{"
+                                    "\"d9\":{"
+                                        "\"d10\":{"
+                                            "\"d11\":{"
+                                                "\"d12\":{"
+                                                    "\"d13\":{"
+                                                        "\"d14\":{"
+                                                            "\"d15\":\"max\""
+                                                        "}"
+                                                    "}"
+                                                "}"
+                                            "}"
+                                        "}"
+                                    "}"
+                                "}"
+                            "}"
+                        "}"
+                    "}"
+                "}"
+            "}"
+        "},"
+        "\"k1\":true,"
+        "\"k2\":false,"
+        "\"k3\":null,"
+        "\"k4\":4,"
+        "\"k5\":5.5,"
+        "\"k6\":\"six\","
+        "\"k7\":7,"
+        "\"k8\":8,"
+        "\"k9\":9,"
+        "\"k10\":10,"
+        "\"k11\":11,"
+        "\"k12\":12,"
+        "\"k13\":13,"
+        "\"k14\":14,"
+        "\"k15\":15,"
+        "\"k16\":16"
+        "}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Token budget: 125 tokens out of OKJ_MAX_TOKENS (128) */
+    assert(parser.token_count == 125U);
+    assert(parser.tokens[0].type == OKJ_OBJECT);
+    assert(parser.depth == 0U);   /* all containers closed */
+
+    /* Structural counts:
+     *   14 objects: root + deepNestingTest + d3 through d14
+     *    1 array:   largeArrayTest */
+    assert(okj_count_objects(&parser) == 14U);
+    assert(okj_count_arrays(&parser)  == 1U);
+
+    /* --- max-length string value (63 bytes, one below the 64-byte ceiling) --- */
+    str = okj_get_string(&parser, "maxLengthStringTest63Chrs");
+    assert(str != NULL);
+    assert(str->length == 63U);
+    assert(str->start[0]  == '1');
+    assert(str->start[62] == '3');   /* last digit of the 63-char sequence */
+
+    /* --- large array (60 elements, near OKJ_MAX_ARRAY_SIZE of 64) --- */
+    arr = okj_get_array(&parser, "largeArrayTest");
+    assert(arr != NULL);
+    assert(arr->count == 60U);
+
+    /* --- deep nesting (14 levels, two below OKJ_MAX_DEPTH of 16) --- */
+    obj = okj_get_object(&parser, "deepNestingTest");
+    assert(obj != NULL);
+    assert(obj->count == 1U);   /* single member: d3 */
+
+    obj = okj_get_object(&parser, "d3");
+    assert(obj != NULL);
+    assert(obj->count == 1U);   /* single member: d4 */
+
+    /* Leaf string at the deepest level */
+    str = okj_get_string(&parser, "d15");
+    assert(str != NULL);
+    assert(str->length == 3U);   /* "max" */
+    assert(str->start[0] == 'm');
+
+    /* --- flat primitive fields: booleans --- */
+    bval = okj_get_boolean(&parser, "k1");
+    assert(bval != NULL);
+    assert(bval->start[0] == 't');   /* true */
+    assert(bval->length   == 4U);
+
+    bval = okj_get_boolean(&parser, "k2");
+    assert(bval != NULL);
+    assert(bval->start[0] == 'f');   /* false */
+    assert(bval->length   == 5U);
+
+    /* --- null --- */
+    tok = okj_get_token(&parser, "k3");
+    assert(tok != NULL);
+    assert(tok->type   == OKJ_NULL);
+    assert(tok->length == 4U);   /* "null" */
+
+    /* --- integers --- */
+    num = okj_get_number(&parser, "k4");
+    assert(num != NULL);
+    assert(num->length == 1U);   /* "4" */
+
+    num = okj_get_number(&parser, "k16");
+    assert(num != NULL);
+    assert(num->length == 2U);   /* "16" */
+
+    /* --- float --- */
+    num = okj_get_number(&parser, "k5");
+    assert(num != NULL);
+    assert(num->length == 3U);   /* "5.5" */
+    assert(num->start[1] == '.');
+
+    /* --- string primitive --- */
+    str = okj_get_string(&parser, "k6");
+    assert(str != NULL);
+    assert(str->length == 3U);   /* "six" */
+    assert(str->start[0] == 's');
+
+    printf("test_upper_limits_json passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -2777,6 +2952,7 @@ int main(int argc, char* argv[])
     test_iot_sensor_json();
     test_user_data_json();
     test_deeply_nested_valid_json();
+    test_upper_limits_json();
 
     printf("All OK_JSON tests passed!\n");
 

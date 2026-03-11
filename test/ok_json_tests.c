@@ -123,6 +123,7 @@ void test_top_level_string(void);
 void test_top_level_boolean(void);
 void test_top_level_null(void);
 void test_iot_sensor_json(void);
+void test_user_data_json(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -2418,6 +2419,159 @@ void test_iot_sensor_json(void)
     printf("test_iot_sensor_json passed!\n");
 }
 
+void test_user_data_json(void)
+{
+    /* Parse a realistic user-data payload (array of two user objects) that
+     * exercises all major JSON value types at once:
+     *   - Top-level array containing two objects
+     *   - String fields  (_id, guid, balance, name, company, email, about)
+     *   - Boolean values (isActive: false for both users)
+     *   - Integer and float numbers (index, age, latitude, longitude)
+     *   - Nested array of strings (tags, 3 elements per user)
+     *   - Nested array of objects (friends, 1 element per user)
+     *     each friend object has integer id and string name
+     *
+     * Token budget: 75
+     *   1  root OKJ_ARRAY
+     *   37 first user object  (1 OKJ_OBJECT + 12 key-value pairs×2
+     *                          + tags key+array+3 strings
+     *                          + friends key+array+object+2 key-value pairs)
+     *   37 second user object (same structure)
+     *
+     * Object count: 4  (user1, user2, user1.friends[0], user2.friends[0])
+     * Array count:  5  (root, user1.tags, user1.friends,
+     *                         user2.tags, user2.friends)
+     */
+
+    OkJsonParser   parser;
+    OkJsonString  *str;
+    OkJsonNumber  *num;
+    OkJsonBoolean *bval;
+    OkJsonArray   *arr;
+    char           buf[64];
+
+    char json_str[] =
+        "["
+        "{"
+        "\"_id\":\"69b18062f9d860aa282072e7\","
+        "\"index\":0,"
+        "\"guid\":\"695ef86b-6392-448a-a346-68e174770d11\","
+        "\"isActive\":false,"
+        "\"balance\":\"$2,992.34\","
+        "\"age\":33,"
+        "\"name\":\"Hamilton Mcdowell\","
+        "\"company\":\"EXPOSA\","
+        "\"email\":\"hamilton@exposa.com\","
+        "\"about\":\"Consectetur adipisicing ipsum fugiat aute aliqua.\","
+        "\"latitude\":-63.370226,"
+        "\"longitude\":-97.934255,"
+        "\"tags\":[\"ipsum\",\"officia\",\"enim\"],"
+        "\"friends\":[{\"id\":0,\"name\":\"Angelina Mercado\"}]"
+        "},"
+        "{"
+        "\"_id\":\"69b18062cce81d0eac3e3e8a\","
+        "\"index\":1,"
+        "\"guid\":\"0b1c834d-334f-4eba-9cb2-d74dc3643704\","
+        "\"isActive\":false,"
+        "\"balance\":\"$1,712.77\","
+        "\"age\":40,"
+        "\"name\":\"Simone Fuentes\","
+        "\"company\":\"QUAILCOM\","
+        "\"email\":\"simonefuentes@quailcom.com\","
+        "\"about\":\"Sunt eu ipsum pariatur occaecat ullamco minim.\","
+        "\"latitude\":18.085851,"
+        "\"longitude\":177.469499,"
+        "\"tags\":[\"laborum\",\"laboris\",\"consequat\"],"
+        "\"friends\":[{\"id\":0,\"name\":\"Elva Whitfield\"}]"
+        "}"
+        "]";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Token budget */
+    assert(parser.token_count == 75U);
+    assert(parser.tokens[0].type == OKJ_ARRAY);
+
+    /* Structural counts */
+    assert(okj_count_objects(&parser) == 4U);
+    assert(okj_count_arrays(&parser)  == 5U);
+
+    /* --- first user: string fields --- */
+    str = okj_get_string(&parser, "_id");
+    assert(str != NULL);
+    assert(str->length == 24U);   /* "69b18062f9d860aa282072e7" */
+    assert(str->start[0] == '6');
+
+    str = okj_get_string(&parser, "guid");
+    assert(str != NULL);
+    assert(str->length == 36U);   /* "695ef86b-6392-448a-a346-68e174770d11" */
+
+    str = okj_get_string(&parser, "balance");
+    assert(str != NULL);
+    assert(str->length == 9U);    /* "$2,992.34" */
+    assert(str->start[0] == '$');
+
+    str = okj_get_string(&parser, "name");
+    assert(str != NULL);
+    assert(str->length == 17U);   /* "Hamilton Mcdowell" */
+    assert(str->start[0] == 'H');
+
+    /* copy_string round-trip on name */
+    assert(okj_copy_string(str, buf, (uint16_t)sizeof(buf)) == 17U);
+    assert(buf[0]  == 'H');
+    assert(buf[17] == '\0');
+
+    str = okj_get_string(&parser, "company");
+    assert(str != NULL);
+    assert(str->length == 6U);    /* "EXPOSA" */
+
+    str = okj_get_string(&parser, "email");
+    assert(str != NULL);
+    assert(str->length == 19U);   /* "hamilton@exposa.com" */
+
+    str = okj_get_string(&parser, "about");
+    assert(str != NULL);
+    assert(str->length == 49U);   /* "Consectetur adipisicing ipsum fugiat aute aliqua." */
+
+    /* --- first user: boolean field --- */
+    bval = okj_get_boolean(&parser, "isActive");
+    assert(bval != NULL);
+    assert(bval->start[0] == 'f');   /* false */
+    assert(bval->length   == 5U);
+
+    /* --- first user: numeric fields --- */
+    num = okj_get_number(&parser, "index");
+    assert(num != NULL);
+    assert(num->length == 1U);    /* "0" */
+
+    num = okj_get_number(&parser, "age");
+    assert(num != NULL);
+    assert(num->length == 2U);    /* "33" */
+
+    num = okj_get_number(&parser, "latitude");
+    assert(num != NULL);
+    assert(num->start[0] == '-');
+    assert(num->length == 10U);   /* "-63.370226" */
+
+    num = okj_get_number(&parser, "longitude");
+    assert(num != NULL);
+    assert(num->start[0] == '-');
+    assert(num->length == 10U);   /* "-97.934255" */
+
+    /* --- first user: tags array --- */
+    arr = okj_get_array(&parser, "tags");
+    assert(arr != NULL);
+    assert(arr->count == 3U);
+
+    /* --- first user: friends array --- */
+    arr = okj_get_array(&parser, "friends");
+    assert(arr != NULL);
+    assert(arr->count == 1U);
+
+    printf("test_user_data_json passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -2519,6 +2673,7 @@ int main(int argc, char* argv[])
     test_top_level_boolean();
     test_top_level_null();
     test_iot_sensor_json();
+    test_user_data_json();
 
     printf("All OK_JSON tests passed!\n");
 

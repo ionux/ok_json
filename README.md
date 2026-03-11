@@ -103,6 +103,10 @@ Requires a C99-capable compiler. Tested with GCC using
 dimensions in struct definitions). The remaining limits are `static const`
 values defined in the header. All can be overridden at compile time.
 
+## Known Issues
+
+This code is currently not thread safe.  Do not use in a multithreaded context.
+
 ## Wiki
 
 A full local wiki is available in the [`wiki/`](wiki/) directory:

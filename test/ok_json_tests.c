@@ -100,6 +100,24 @@ void test_trailing_garbage_after_array(void);
 void test_trailing_garbage_after_primitive(void);
 void test_two_top_level_primitives(void);
 void test_two_top_level_objects(void);
+void test_trailing_comma_in_object(void);
+void test_trailing_comma_in_array(void);
+void test_number_as_object_key(void);
+void test_boolean_as_object_key(void);
+void test_null_as_object_key(void);
+void test_missing_colon(void);
+void test_colon_without_key(void);
+void test_double_colon(void);
+void test_empty_input(void);
+void test_whitespace_only_input(void);
+void test_keyword_no_boundary(void);
+void test_value_after_value_in_object(void);
+void test_comma_at_start_of_array(void);
+void test_comma_at_start_of_object(void);
+void test_top_level_number(void);
+void test_top_level_string(void);
+void test_top_level_boolean(void);
+void test_top_level_null(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1647,8 +1665,9 @@ void test_depth_stack_bracket_mismatch_arr(void)
 
 void test_depth_stack_extra_close_brace(void)
 {
-    /* A lone '}' with no matching '{' at depth 0 must be rejected with
-     * OKJ_ERROR_BRACKET_MISMATCH. */
+    /* A lone '}' with no matching '{' must be rejected.
+     * The context check fires before the depth check (a closing bracket is
+     * not valid where a value is expected), so OKJ_ERROR_SYNTAX is returned. */
 
     OkJsonParser parser;
     OkjError     result;
@@ -1657,15 +1676,16 @@ void test_depth_stack_extra_close_brace(void)
     okj_init(&parser, json_str);
     result = okj_parse(&parser);
 
-    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+    assert(result == OKJ_ERROR_SYNTAX);
 
     printf("test_depth_stack_extra_close_brace passed!\n");
 }
 
 void test_depth_stack_extra_close_bracket(void)
 {
-    /* A lone ']' with no matching '[' at depth 0 must be rejected with
-     * OKJ_ERROR_BRACKET_MISMATCH. */
+    /* A lone ']' with no matching '[' must be rejected.
+     * Like the extra brace case, the context check fires first and returns
+     * OKJ_ERROR_SYNTAX rather than OKJ_ERROR_BRACKET_MISMATCH. */
 
     OkJsonParser parser;
     OkjError     result;
@@ -1674,7 +1694,7 @@ void test_depth_stack_extra_close_bracket(void)
     okj_init(&parser, json_str);
     result = okj_parse(&parser);
 
-    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+    assert(result == OKJ_ERROR_SYNTAX);
 
     printf("test_depth_stack_extra_close_bracket passed!\n");
 }
@@ -1831,6 +1851,333 @@ void test_two_top_level_objects(void)
     printf("test_two_top_level_objects passed!\n");
 }
 
+/* ---------------------------------------------------------------------------
+ * RFC 8259 grammar compliance tests
+ * These cover structural rules that were not previously enforced.
+ * ---------------------------------------------------------------------------*/
+
+void test_trailing_comma_in_object(void)
+{
+    /* RFC 8259 §4 does not permit trailing commas in objects.
+     * {"a": 1,} must be rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\": 1,}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_trailing_comma_in_object passed!\n");
+}
+
+void test_trailing_comma_in_array(void)
+{
+    /* RFC 8259 §5 does not permit trailing commas in arrays.
+     * [1, 2,] must be rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "[1, 2,]";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_trailing_comma_in_array passed!\n");
+}
+
+void test_number_as_object_key(void)
+{
+    /* RFC 8259 §4 requires object keys to be strings.
+     * A number used as a key must be rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{42: \"value\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_number_as_object_key passed!\n");
+}
+
+void test_boolean_as_object_key(void)
+{
+    /* RFC 8259 §4: object keys must be strings; 'true' as a key is invalid. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{true: \"value\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_boolean_as_object_key passed!\n");
+}
+
+void test_null_as_object_key(void)
+{
+    /* RFC 8259 §4: object keys must be strings; 'null' as a key is invalid. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{null: \"value\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_null_as_object_key passed!\n");
+}
+
+void test_missing_colon(void)
+{
+    /* An object whose key is not followed by ':' must be rejected.
+     * {"a" "b"} is invalid — the colon is mandatory. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\" \"b\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_missing_colon passed!\n");
+}
+
+void test_colon_without_key(void)
+{
+    /* A colon that appears before any key is not valid. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{: \"value\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_colon_without_key passed!\n");
+}
+
+void test_double_colon(void)
+{
+    /* Two consecutive colons are not valid JSON structure. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\":: 1}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_double_colon passed!\n");
+}
+
+void test_empty_input(void)
+{
+    /* An empty string contains no JSON value and must be rejected.
+     * RFC 8259 §2 requires exactly one top-level value. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_empty_input passed!\n");
+}
+
+void test_whitespace_only_input(void)
+{
+    /* A string containing only whitespace has no JSON value and must be
+     * rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "   \t\n\r  ";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_whitespace_only_input passed!\n");
+}
+
+void test_keyword_no_boundary(void)
+{
+    /* A keyword literal ("true", "false", "null") must be followed by a
+     * value terminator.  "truetrue" is not a valid JSON value. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json1[] = "{\"x\": truetrue}";
+    char json2[] = "{\"x\": falsefalse}";
+    char json3[] = "{\"x\": nullnull}";
+
+    okj_init(&parser, json1);
+    result = okj_parse(&parser);
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    okj_init(&parser, json2);
+    result = okj_parse(&parser);
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    okj_init(&parser, json3);
+    result = okj_parse(&parser);
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_keyword_no_boundary passed!\n");
+}
+
+void test_value_after_value_in_object(void)
+{
+    /* Two values in a row inside an object with no separating comma or colon
+     * must be rejected. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\": 1 2}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_value_after_value_in_object passed!\n");
+}
+
+void test_comma_at_start_of_array(void)
+{
+    /* A leading comma in an array is not valid JSON. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "[,1]";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_comma_at_start_of_array passed!\n");
+}
+
+void test_comma_at_start_of_object(void)
+{
+    /* A leading comma in an object is not valid JSON. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{,\"a\": 1}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_comma_at_start_of_object passed!\n");
+}
+
+void test_top_level_number(void)
+{
+    /* RFC 8259 §2: any JSON value may be the top-level text.
+     * A bare number must parse successfully. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    char json_str[] = "42";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);
+    assert(parser.tokens[0].type == OKJ_NUMBER);
+
+    printf("test_top_level_number passed!\n");
+}
+
+void test_top_level_string(void)
+{
+    /* A bare string must parse successfully as a top-level JSON value. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    char json_str[] = "\"hello\"";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);
+    assert(parser.tokens[0].type == OKJ_STRING);
+
+    printf("test_top_level_string passed!\n");
+}
+
+void test_top_level_boolean(void)
+{
+    /* A bare boolean literal must parse successfully as a top-level value. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    char json1[] = "true";
+    char json2[] = "false";
+
+    okj_init(&parser, json1);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);
+    assert(parser.tokens[0].type == OKJ_BOOLEAN);
+
+    okj_init(&parser, json2);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);
+    assert(parser.tokens[0].type == OKJ_BOOLEAN);
+
+    printf("test_top_level_boolean passed!\n");
+}
+
+void test_top_level_null(void)
+{
+    /* A bare null literal must parse successfully as a top-level JSON value. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    char json_str[] = "null";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    assert(parser.token_count == 1U);
+    assert(parser.tokens[0].type == OKJ_NULL);
+
+    printf("test_top_level_null passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -1907,6 +2254,26 @@ int main(int argc, char* argv[])
     test_trailing_garbage_after_primitive();
     test_two_top_level_primitives();
     test_two_top_level_objects();
+
+    /* RFC 8259 grammar compliance */
+    test_trailing_comma_in_object();
+    test_trailing_comma_in_array();
+    test_number_as_object_key();
+    test_boolean_as_object_key();
+    test_null_as_object_key();
+    test_missing_colon();
+    test_colon_without_key();
+    test_double_colon();
+    test_empty_input();
+    test_whitespace_only_input();
+    test_keyword_no_boundary();
+    test_value_after_value_in_object();
+    test_comma_at_start_of_array();
+    test_comma_at_start_of_object();
+    test_top_level_number();
+    test_top_level_string();
+    test_top_level_boolean();
+    test_top_level_null();
 
     printf("All OK_JSON tests passed!\n");
 

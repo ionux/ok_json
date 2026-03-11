@@ -55,7 +55,7 @@ static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
     uint16_t i = 0U;
     uint8_t result = 1U;
 
-    for (i = 0U; i < len; i++)
+    for (i = 0U; (i < len) && (result != 0U); i++)
     {
         if ((src[i] == '\0') || (src[i] != lit[i]))
         {
@@ -64,6 +64,15 @@ static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
     }
 
     return result;
+}
+
+/* Returns 1 if `c` is a valid character that may immediately follow a JSON
+ * value token (keyword literal, number, or closing bracket).  Valid
+ * terminators are: end of input, whitespace, comma, or a closing bracket. */
+static uint8_t okj_is_value_terminator(char c)
+{
+    return (c == '\0') || (c == ',') || (c == ']') || (c == '}') ||
+           okj_is_whitespace(c);
 }
 
 /* ---------------------------------------------------------------------------
@@ -346,6 +355,7 @@ void okj_init(OkJsonParser *parser, char *json_string)
         parser->position    = 0U;
         parser->token_count = 0U;
         parser->depth       = 0U;
+        parser->context     = OKJ_CTX_WANT_VALUE;
     }
 }
 
@@ -382,6 +392,13 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     }
     else if (c == '{')
     {
+        /* Object open is only valid in a value position. */
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         if (parser->depth >= (uint16_t)OKJ_MAX_DEPTH)
         {
             return OKJ_ERROR_MAX_DEPTH_EXCEEDED;
@@ -396,9 +413,19 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         parser->depth++;
         parser->position++;
         parser->token_count++;
+
+        /* After '{' we expect a key string or immediate '}' (empty object). */
+        parser->context = OKJ_CTX_WANT_KEY_OR_CLOSE;
     }
     else if (c == '[')
     {
+        /* Array open is only valid in a value position. */
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         if (parser->depth >= (uint16_t)OKJ_MAX_DEPTH)
         {
             return OKJ_ERROR_MAX_DEPTH_EXCEEDED;
@@ -413,35 +440,133 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         parser->depth++;
         parser->position++;
         parser->token_count++;
+
+        /* After '[' we expect a value or immediate ']' (empty array). */
+        parser->context = OKJ_CTX_WANT_VALUE_OR_CLOSE;
     }
-    else if ((c == '}') || (c == ']') || (c == ',') || (c == ':'))
+    else if (c == '}')
     {
-        if ((c == '}') || (c == ']'))
+        /* '}' is valid:
+         *  - after a value in a non-empty object (WANT_SEP_OR_CLOSE), or
+         *  - immediately after '{' to close an empty object (WANT_KEY_OR_CLOSE).
+         * It is NOT valid after a trailing comma (WANT_KEY). */
+        if ((parser->context != OKJ_CTX_WANT_SEP_OR_CLOSE) &&
+            (parser->context != OKJ_CTX_WANT_KEY_OR_CLOSE))
         {
-            /* Validate the closing bracket against the depth stack. */
-            if (parser->depth == 0U)
-            {
-                return OKJ_ERROR_BRACKET_MISMATCH;
-            }
-
-            parser->depth--;
-
-            if ((c == '}') && (parser->depth_stack[parser->depth] != OKJ_OBJECT))
-            {
-                return OKJ_ERROR_BRACKET_MISMATCH;
-            }
-
-            if ((c == ']') && (parser->depth_stack[parser->depth] != OKJ_ARRAY))
-            {
-                return OKJ_ERROR_BRACKET_MISMATCH;
-            }
+            return OKJ_ERROR_SYNTAX;
         }
 
-        /* Structural punctuation — advance past it, emit no token. */
+        /* Validate the closing bracket against the depth stack. */
+        if (parser->depth == 0U)
+        {
+            return OKJ_ERROR_BRACKET_MISMATCH;
+        }
+
+        parser->depth--;
+
+        if (parser->depth_stack[parser->depth] != OKJ_OBJECT)
+        {
+            return OKJ_ERROR_BRACKET_MISMATCH;
+        }
+
         parser->position++;
+
+        /* Update context for the enclosing container (if any). */
+        if (parser->depth > 0U)
+        {
+            parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+        }
+    }
+    else if (c == ']')
+    {
+        /* ']' is valid:
+         *  - after a value in a non-empty array (WANT_SEP_OR_CLOSE), or
+         *  - immediately after '[' to close an empty array (WANT_VALUE_OR_CLOSE).
+         * It is NOT valid after a trailing comma (WANT_VALUE). */
+        if ((parser->context != OKJ_CTX_WANT_SEP_OR_CLOSE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
+        if (parser->depth == 0U)
+        {
+            return OKJ_ERROR_BRACKET_MISMATCH;
+        }
+
+        parser->depth--;
+
+        if (parser->depth_stack[parser->depth] != OKJ_ARRAY)
+        {
+            return OKJ_ERROR_BRACKET_MISMATCH;
+        }
+
+        parser->position++;
+
+        if (parser->depth > 0U)
+        {
+            parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+        }
+    }
+    else if (c == ',')
+    {
+        /* Comma is only valid after a completed value.  Trailing commas
+         * (comma followed immediately by a closing bracket) are forbidden
+         * by RFC 8259. */
+        if (parser->context != OKJ_CTX_WANT_SEP_OR_CLOSE)
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
+        if (parser->depth == 0U)
+        {
+            return OKJ_ERROR_SYNTAX;    /* comma outside any container */
+        }
+
+        parser->position++;
+
+        /* What comes next depends on whether we are inside an object or array.
+         * Note: WANT_KEY (not WANT_KEY_OR_CLOSE) prevents trailing commas. */
+        if (parser->depth_stack[parser->depth - 1U] == OKJ_OBJECT)
+        {
+            parser->context = OKJ_CTX_WANT_KEY;
+        }
+        else
+        {
+            parser->context = OKJ_CTX_WANT_VALUE;
+        }
+    }
+    else if (c == ':')
+    {
+        /* Colon is only valid immediately after an object key string. */
+        if (parser->context != OKJ_CTX_WANT_COLON)
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
+        parser->position++;
+        parser->context = OKJ_CTX_WANT_VALUE;
     }
     else if (c == '"')
     {
+        uint8_t is_key = 0U;    /* 1 when this string is an object key */
+
+        /* A string is valid as an object key or as a value. */
+        if ((parser->context == OKJ_CTX_WANT_KEY) ||
+            (parser->context == OKJ_CTX_WANT_KEY_OR_CLOSE))
+        {
+            is_key = 1U;
+        }
+        else if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+                 (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+        else
+        {
+            /* is_key stays 0 — string is a value */
+        }
+
         tok        = &parser->tokens[parser->token_count];
         tok->type  = OKJ_STRING;
         tok->start = &parser->json[parser->position + 1U];  /* skip opening '"' */
@@ -540,11 +665,33 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
             parser->position++;   /* advance past closing '"' */
             parser->token_count++;
+
+            /* Update grammar context based on whether this string was a key
+             * (next: colon) or a value (next: separator or closing bracket). */
+            if (is_key != 0U)
+            {
+                parser->context = OKJ_CTX_WANT_COLON;
+            }
+            else if (parser->depth > 0U)
+            {
+                parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+            }
+            else
+            {
+                /* Top-level string value: the main loop handles the exit. */
+            }
         }
     }
     else if ((okj_is_digit(c)) || (c == '-'))
     {
         uint8_t number_ok = 1U;
+
+        /* Numbers are only valid in value positions, never as object keys. */
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
 
         tok        = &parser->tokens[parser->token_count];
         tok->type  = OKJ_NUMBER;
@@ -633,6 +780,11 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             tok->length = parser->position - start_pos;
 
             parser->token_count++;
+
+            if (parser->depth > 0U)
+            {
+                parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+            }
         }
         else
         {
@@ -641,7 +793,12 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     }
     else if (okj_match(&parser->json[parser->position], "true", 4U))
     {
-        /* TODO: Should we check for other forms like TRUE and True? */
+        /* Keyword literals are only valid in value positions. */
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
 
         tok         = &parser->tokens[parser->token_count];
         tok->type   = OKJ_BOOLEAN;
@@ -649,11 +806,27 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         tok->length = 4U;
 
         parser->position += 4U;
+
+        /* RFC 8259: keyword must end at a value boundary (no "truetrue"). */
+        if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         parser->token_count++;
+
+        if (parser->depth > 0U)
+        {
+            parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+        }
     }
     else if (okj_match(&parser->json[parser->position], "false", 5U))
     {
-        /* TODO: Should we check for other forms like FALSE and False? */
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
 
         tok         = &parser->tokens[parser->token_count];
         tok->type   = OKJ_BOOLEAN;
@@ -661,19 +834,45 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         tok->length = 5U;
 
         parser->position += 5U;
+
+        if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         parser->token_count++;
+
+        if (parser->depth > 0U)
+        {
+            parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+        }
     }
     else if (okj_match(&parser->json[parser->position], "null", 4U))
     {
-        /* TODO: Should we check for other forms like NULL and Null? */
-        
+        if ((parser->context != OKJ_CTX_WANT_VALUE) &&
+            (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         tok         = &parser->tokens[parser->token_count];
         tok->type   = OKJ_NULL;
         tok->start  = &parser->json[parser->position];
         tok->length = 4U;
 
         parser->position += 4U;
+
+        if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+        {
+            return OKJ_ERROR_SYNTAX;
+        }
+
         parser->token_count++;
+
+        if (parser->depth > 0U)
+        {
+            parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+        }
     }
     else
     {
@@ -748,6 +947,13 @@ OkjError okj_parse(OkJsonParser *parser)
 
     /* Any containers still open at end-of-input indicate truncated input. */
     if ((result == OKJ_SUCCESS) && (parser->depth != 0U))
+    {
+        result = OKJ_ERROR_UNEXPECTED_END;
+    }
+
+    /* RFC 8259 §2: a JSON text must contain exactly one value.  An empty
+     * or whitespace-only input has no value and is therefore invalid. */
+    if ((result == OKJ_SUCCESS) && (parser->token_count == 0U))
     {
         result = OKJ_ERROR_UNEXPECTED_END;
     }

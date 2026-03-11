@@ -2,12 +2,10 @@
 
 ## Description
 
-!! This is currently a work in progress. !!
-
 Simple, light, and clean JSON parser suitable for embedded, memory-constrained,
 and safety-critical projects. Written in pure C99 for maximum portability.
 Zero external library dependencies (`stdio.h`, `string.h`, and `ctype.h` are
-not used). Designed with safety-critical coding standards (MISRA C2012) in mind.
+not used). Designed with safety-critical coding standards (MISRA C:2012) in mind.
 
 ## Quick Start
 
@@ -132,6 +130,8 @@ and merge your code.
 ## License
 
 Copyright (c) 2026 Rich Morgan
+
+The MIT License (MIT)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

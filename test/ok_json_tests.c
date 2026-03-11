@@ -61,6 +61,10 @@ void test_escape_unicode_valid(void);
 void test_escape_unicode_invalid_hex(void);
 void test_escape_unicode_truncated(void);
 void test_escape_unknown(void);
+void test_utf8_valid_multibyte(void);
+void test_utf8_invalid_overlong(void);
+void test_utf8_invalid_surrogate(void);
+void test_utf8_invalid_truncated(void);
 void test_array_too_large(void);
 void test_object_too_large(void);
 void test_get_array_raw(void);
@@ -847,6 +851,76 @@ void test_escape_unknown(void)
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
 
     printf("test_escape_unknown passed!\n");
+}
+
+
+void test_utf8_valid_multibyte(void)
+{
+    /* RFC 8259 §8.1: UTF-8 encoded non-ASCII text in strings is valid. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    OkJsonString *str;
+    char json_str[] = "{\"s\":\"\xC3\xA9\xE6\xBC\xA2\xF0\x9F\x98\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "s");
+    assert(str != NULL);
+    assert(str->length == 9U);  /* C3 A9 E6 BC A2 F0 9F 98 80 */
+
+    printf("test_utf8_valid_multibyte passed!\n");
+}
+
+void test_utf8_invalid_overlong(void)
+{
+    /* Overlong UTF-8 sequence (C0 AF) is forbidden by UTF-8 and RFC 8259 §8.1. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xC0\xAF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_utf8_invalid_overlong passed!\n");
+}
+
+void test_utf8_invalid_surrogate(void)
+{
+    /* UTF-8 encoding of surrogate code point U+D800 (ED A0 80) is invalid. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xED\xA0\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_utf8_invalid_surrogate passed!\n");
+}
+
+void test_utf8_invalid_truncated(void)
+{
+    /* Truncated UTF-8 leading byte (C2 without continuation) is invalid. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xC2\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_utf8_invalid_truncated passed!\n");
 }
 
 void test_array_too_large(void)
@@ -2215,6 +2289,10 @@ int main(int argc, char* argv[])
     test_escape_unicode_invalid_hex();
     test_escape_unicode_truncated();
     test_escape_unknown();
+    test_utf8_valid_multibyte();
+    test_utf8_invalid_overlong();
+    test_utf8_invalid_surrogate();
+    test_utf8_invalid_truncated();
     test_array_too_large();
     test_object_too_large();
     test_get_array_raw();

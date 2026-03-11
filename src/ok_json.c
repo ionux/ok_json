@@ -48,6 +48,126 @@ static uint8_t okj_is_hex_digit(char c)
            ((c >= 'A') && (c <= 'F'));
 }
 
+static uint8_t okj_is_utf8_continuation(uint8_t byte)
+{
+    return (uint8_t)((byte & 0xC0U) == 0x80U);
+}
+
+/* Validate one UTF-8 scalar-value sequence starting at src[pos].
+ * On success sets *advance (1..4) and returns 1, else returns 0. */
+static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_t *advance)
+{
+    uint8_t b0;
+    uint8_t b1;
+    uint8_t b2;
+    uint8_t b3;
+
+    if ((src == NULL) || (advance == NULL))
+    {
+        return 0U;
+    }
+
+    b0 = (uint8_t)src[pos];
+
+    if (b0 <= 0x7FU)
+    {
+        *advance = 1U;
+        return 1U;
+    }
+
+    b1 = (uint8_t)src[pos + 1U];
+
+    if ((b0 >= 0xC2U) && (b0 <= 0xDFU))
+    {
+        if (okj_is_utf8_continuation(b1) != 0U)
+        {
+            *advance = 2U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    b2 = (uint8_t)src[pos + 2U];
+
+    if (b0 == 0xE0U)
+    {
+        if ((b1 >= 0xA0U) && (b1 <= 0xBFU) && (okj_is_utf8_continuation(b2) != 0U))
+        {
+            *advance = 3U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    if (((b0 >= 0xE1U) && (b0 <= 0xECU)) || ((b0 >= 0xEEU) && (b0 <= 0xEFU)))
+    {
+        if ((okj_is_utf8_continuation(b1) != 0U) &&
+            (okj_is_utf8_continuation(b2) != 0U))
+        {
+            *advance = 3U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    if (b0 == 0xEDU)
+    {
+        if ((b1 >= 0x80U) && (b1 <= 0x9FU) && (okj_is_utf8_continuation(b2) != 0U))
+        {
+            *advance = 3U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    b3 = (uint8_t)src[pos + 3U];
+
+    if (b0 == 0xF0U)
+    {
+        if ((b1 >= 0x90U) && (b1 <= 0xBFU) &&
+            (okj_is_utf8_continuation(b2) != 0U) &&
+            (okj_is_utf8_continuation(b3) != 0U))
+        {
+            *advance = 4U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    if ((b0 >= 0xF1U) && (b0 <= 0xF3U))
+    {
+        if ((okj_is_utf8_continuation(b1) != 0U) &&
+            (okj_is_utf8_continuation(b2) != 0U) &&
+            (okj_is_utf8_continuation(b3) != 0U))
+        {
+            *advance = 4U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    if (b0 == 0xF4U)
+    {
+        if ((b1 >= 0x80U) && (b1 <= 0x8FU) &&
+            (okj_is_utf8_continuation(b2) != 0U) &&
+            (okj_is_utf8_continuation(b3) != 0U))
+        {
+            *advance = 4U;
+            return 1U;
+        }
+
+        return 0U;
+    }
+
+    return 0U;
+}
+
 /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
  * Stops early on a NUL byte in `src` to avoid overreads. */
 static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
@@ -631,6 +751,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             }
             else
             {
+                uint16_t utf8_advance = 0U;
+
                 /* RFC 8259 §7: bare control characters (U+0000–U+001F) are
                  * forbidden inside strings; they must be represented as
                  * escape sequences (e.g. \n, \t, \uXXXX). */
@@ -640,7 +762,15 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                     break;
                 }
 
-                parser->position++;
+                if (okj_validate_utf8_sequence(parser->json,
+                                               parser->position,
+                                               &utf8_advance) == 0U)
+                {
+                    result = OKJ_ERROR_BAD_STRING;
+                    break;
+                }
+
+                parser->position += utf8_advance;
             }
         }
 

@@ -65,6 +65,39 @@ void test_utf8_valid_multibyte(void);
 void test_utf8_invalid_overlong(void);
 void test_utf8_invalid_surrogate(void);
 void test_utf8_invalid_truncated(void);
+/* MC/DC tests for okj_validate_utf8_sequence */
+void test_utf8_2byte_valid_boundary_min(void);
+void test_utf8_2byte_valid_boundary_max(void);
+void test_utf8_2byte_b1_not_continuation(void);
+void test_utf8_3byte_e0_valid(void);
+void test_utf8_3byte_e0_b1_below_range(void);
+void test_utf8_3byte_e0_b1_above_range(void);
+void test_utf8_3byte_e0_b2_not_continuation(void);
+void test_utf8_3byte_e1_ec_boundary_min(void);
+void test_utf8_3byte_e1_ec_boundary_max(void);
+void test_utf8_3byte_ee_ef_boundary_min(void);
+void test_utf8_3byte_ee_ef_boundary_max(void);
+void test_utf8_3byte_range_b1_not_continuation(void);
+void test_utf8_3byte_range_b2_not_continuation(void);
+void test_utf8_3byte_ed_valid(void);
+void test_utf8_3byte_ed_valid_boundary_max(void);
+void test_utf8_3byte_ed_b1_below_range(void);
+void test_utf8_3byte_ed_b2_not_continuation(void);
+void test_utf8_4byte_f0_b1_below_range(void);
+void test_utf8_4byte_f0_b1_above_range(void);
+void test_utf8_4byte_f0_b2_not_continuation(void);
+void test_utf8_4byte_f0_b3_not_continuation(void);
+void test_utf8_4byte_f1_f3_valid(void);
+void test_utf8_4byte_f1_f3_boundary_max(void);
+void test_utf8_4byte_f1_f3_b1_not_continuation(void);
+void test_utf8_4byte_f1_f3_b2_not_continuation(void);
+void test_utf8_4byte_f1_f3_b3_not_continuation(void);
+void test_utf8_4byte_f4_valid(void);
+void test_utf8_4byte_f4_valid_boundary_max(void);
+void test_utf8_4byte_f4_b1_below_range(void);
+void test_utf8_4byte_f4_b1_above_range(void);
+void test_utf8_4byte_f4_b2_not_continuation(void);
+void test_utf8_4byte_f4_b3_not_continuation(void);
 void test_array_too_large(void);
 void test_object_too_large(void);
 void test_object_exactly_32_members(void);
@@ -926,6 +959,589 @@ void test_utf8_invalid_truncated(void)
     assert(result == OKJ_ERROR_BAD_STRING);
 
     printf("test_utf8_invalid_truncated passed!\n");
+}
+
+/* ==================================================================
+ * MC/DC tests for okj_validate_utf8_sequence
+ *
+ * For DO-178C MC/DC compliance every atomic condition inside each
+ * compound predicate must independently affect the overall outcome.
+ * Each group below targets one compound predicate and provides:
+ *   - at least one passing (valid) case, and
+ *   - one failing case per atomic condition, holding the other
+ *     conditions true so that the killed condition is the sole cause
+ *     of the failure.
+ * ================================================================== */
+
+/* ------------------------------------------------------------------ *
+ *  2-byte sequence  (b0 in [0xC2, 0xDF])                            *
+ *  Compound predicate: okj_is_utf8_continuation(b1) != 0U           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_2byte_valid_boundary_min(void)
+{
+    /* b0=0xC2 (minimum valid 2-byte leader), b1=0x80 (min continuation).
+     * Encodes U+0080.  Shows b0 >= 0xC2 is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xC2\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_2byte_valid_boundary_min passed!\n");
+}
+
+void test_utf8_2byte_valid_boundary_max(void)
+{
+    /* b0=0xDF (maximum valid 2-byte leader), b1=0xBF (max continuation).
+     * Encodes U+07FF.  Shows b0 <= 0xDF is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xDF\xBF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_2byte_valid_boundary_max passed!\n");
+}
+
+void test_utf8_2byte_b1_not_continuation(void)
+{
+    /* b0=0xC2 (valid leader), b1=0x41 ('A' — not a continuation byte).
+     * Independently kills: okj_is_utf8_continuation(b1) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xC2\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_2byte_b1_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  3-byte 0xE0 sequence                                              *
+ *  Compound predicate:                                               *
+ *    (b1 >= 0xA0U) && (b1 <= 0xBFU) &&                             *
+ *    (okj_is_utf8_continuation(b2) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_3byte_e0_valid(void)
+{
+    /* b0=0xE0, b1=0xA0, b2=0x80 → U+0800.
+     * All three conditions in the compound predicate are true. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE0\xA0\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_e0_valid passed!\n");
+}
+
+void test_utf8_3byte_e0_b1_below_range(void)
+{
+    /* b0=0xE0, b1=0x9F (one below the 0xA0 lower bound), b2=0x80.
+     * Note: 0x9F is a valid continuation byte (10011111), so the only
+     * reason this sequence is rejected is b1 < 0xA0 (overlong encoding).
+     * Independently kills: b1 >= 0xA0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE0\x9F\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_e0_b1_below_range passed!\n");
+}
+
+void test_utf8_3byte_e0_b1_above_range(void)
+{
+    /* b0=0xE0, b1=0xC0 (one above the 0xBF upper bound), b2=0x80.
+     * Independently kills: b1 <= 0xBFU. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE0\xC0\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_e0_b1_above_range passed!\n");
+}
+
+void test_utf8_3byte_e0_b2_not_continuation(void)
+{
+    /* b0=0xE0, b1=0xA0 (valid), b2=0x41 (not a continuation byte).
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE0\xA0\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_e0_b2_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  3-byte sequences: b0 in [0xE1,0xEC] or [0xEE,0xEF]              *
+ *  Compound predicate:                                               *
+ *    (okj_is_utf8_continuation(b1) != 0U) &&                        *
+ *    (okj_is_utf8_continuation(b2) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_3byte_e1_ec_boundary_min(void)
+{
+    /* b0=0xE1 (minimum of first sub-range), b1=0x80, b2=0x80 → U+1000.
+     * Shows b0 >= 0xE1 is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE1\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_e1_ec_boundary_min passed!\n");
+}
+
+void test_utf8_3byte_e1_ec_boundary_max(void)
+{
+    /* b0=0xEC (maximum of first sub-range), b1=0x80, b2=0x80 → U+C000.
+     * Shows b0 <= 0xEC is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xEC\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_e1_ec_boundary_max passed!\n");
+}
+
+void test_utf8_3byte_ee_ef_boundary_min(void)
+{
+    /* b0=0xEE (minimum of second sub-range), b1=0x80, b2=0x80 → U+E000.
+     * Shows b0 >= 0xEE (second sub-range) is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xEE\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_ee_ef_boundary_min passed!\n");
+}
+
+void test_utf8_3byte_ee_ef_boundary_max(void)
+{
+    /* b0=0xEF (maximum of second sub-range), b1=0xBF, b2=0xBF → U+FFFF.
+     * Shows b0 <= 0xEF is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xEF\xBF\xBF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_ee_ef_boundary_max passed!\n");
+}
+
+void test_utf8_3byte_range_b1_not_continuation(void)
+{
+    /* b0=0xE1 (valid), b1=0x41 (not a continuation byte), b2=0x80.
+     * Independently kills: okj_is_utf8_continuation(b1) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE1\x41\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_range_b1_not_continuation passed!\n");
+}
+
+void test_utf8_3byte_range_b2_not_continuation(void)
+{
+    /* b0=0xE1 (valid), b1=0x80 (valid continuation), b2=0x41 (not continuation).
+     * b1 passes its condition; only b2 fails.
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xE1\x80\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_range_b2_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  3-byte 0xED sequence (surrogate range guard)                      *
+ *  Compound predicate:                                               *
+ *    (b1 >= 0x80U) && (b1 <= 0x9FU) &&                             *
+ *    (okj_is_utf8_continuation(b2) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_3byte_ed_valid(void)
+{
+    /* b0=0xED, b1=0x80, b2=0x80 → U+D000 (valid, pre-surrogate).
+     * All three conditions are true. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xED\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_ed_valid passed!\n");
+}
+
+void test_utf8_3byte_ed_valid_boundary_max(void)
+{
+    /* b0=0xED, b1=0x9F, b2=0xBF → U+D7FF (last code point before surrogates).
+     * Shows b1 <= 0x9FU is satisfied at its upper boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xED\x9F\xBF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_3byte_ed_valid_boundary_max passed!\n");
+}
+
+void test_utf8_3byte_ed_b1_below_range(void)
+{
+    /* b0=0xED, b1=0x7F (one below the 0x80 lower bound), b2=0x80.
+     * Independently kills: b1 >= 0x80U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xED\x7F\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_ed_b1_below_range passed!\n");
+}
+
+void test_utf8_3byte_ed_b2_not_continuation(void)
+{
+    /* b0=0xED, b1=0x80 (valid, range satisfied), b2=0x41 (not continuation).
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xED\x80\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_3byte_ed_b2_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  4-byte 0xF0 sequence                                              *
+ *  Compound predicate:                                               *
+ *    (b1 >= 0x90U) && (b1 <= 0xBFU) &&                             *
+ *    (okj_is_utf8_continuation(b2) != 0U) &&                        *
+ *    (okj_is_utf8_continuation(b3) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_4byte_f0_b1_below_range(void)
+{
+    /* b0=0xF0, b1=0x8F (one below 0x90 lower bound), b2=0x80, b3=0x80.
+     * Encodes an overlong 4-byte sequence.
+     * Independently kills: b1 >= 0x90U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF0\x8F\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f0_b1_below_range passed!\n");
+}
+
+void test_utf8_4byte_f0_b1_above_range(void)
+{
+    /* b0=0xF0, b1=0xC0 (one above 0xBF upper bound), b2=0x80, b3=0x80.
+     * Independently kills: b1 <= 0xBFU. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF0\xC0\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f0_b1_above_range passed!\n");
+}
+
+void test_utf8_4byte_f0_b2_not_continuation(void)
+{
+    /* b0=0xF0, b1=0x90 (valid), b2=0x41 (not continuation), b3=0x80.
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF0\x90\x41\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f0_b2_not_continuation passed!\n");
+}
+
+void test_utf8_4byte_f0_b3_not_continuation(void)
+{
+    /* b0=0xF0, b1=0x90 (valid), b2=0x80 (valid), b3=0x41 (not continuation).
+     * b1 and b2 both pass; only b3 fails.
+     * Independently kills: okj_is_utf8_continuation(b3) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF0\x90\x80\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f0_b3_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  4-byte sequences: b0 in [0xF1, 0xF3]                             *
+ *  Compound predicate:                                               *
+ *    (okj_is_utf8_continuation(b1) != 0U) &&                        *
+ *    (okj_is_utf8_continuation(b2) != 0U) &&                        *
+ *    (okj_is_utf8_continuation(b3) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_4byte_f1_f3_valid(void)
+{
+    /* b0=0xF1, b1=0x80, b2=0x80, b3=0x80 → U+40000.
+     * All three continuation conditions are true. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF1\x80\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_4byte_f1_f3_valid passed!\n");
+}
+
+void test_utf8_4byte_f1_f3_boundary_max(void)
+{
+    /* b0=0xF3 (maximum of range), b1=0xBF, b2=0xBF, b3=0xBF → U+FFFFF.
+     * Shows b0 <= 0xF3U is satisfied at its boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF3\xBF\xBF\xBF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_4byte_f1_f3_boundary_max passed!\n");
+}
+
+void test_utf8_4byte_f1_f3_b1_not_continuation(void)
+{
+    /* b0=0xF1 (valid), b1=0x41 (not continuation), b2=0x80, b3=0x80.
+     * Independently kills: okj_is_utf8_continuation(b1) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF1\x41\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f1_f3_b1_not_continuation passed!\n");
+}
+
+void test_utf8_4byte_f1_f3_b2_not_continuation(void)
+{
+    /* b0=0xF1 (valid), b1=0x80 (valid), b2=0x41 (not continuation), b3=0x80.
+     * b1 passes; only b2 fails.
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF1\x80\x41\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f1_f3_b2_not_continuation passed!\n");
+}
+
+void test_utf8_4byte_f1_f3_b3_not_continuation(void)
+{
+    /* b0=0xF1 (valid), b1=0x80 (valid), b2=0x80 (valid), b3=0x41 (not continuation).
+     * b1 and b2 both pass; only b3 fails.
+     * Independently kills: okj_is_utf8_continuation(b3) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF1\x80\x80\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f1_f3_b3_not_continuation passed!\n");
+}
+
+/* ------------------------------------------------------------------ *
+ *  4-byte 0xF4 sequence                                              *
+ *  Compound predicate:                                               *
+ *    (b1 >= 0x80U) && (b1 <= 0x8FU) &&                             *
+ *    (okj_is_utf8_continuation(b2) != 0U) &&                        *
+ *    (okj_is_utf8_continuation(b3) != 0U)                           *
+ * ------------------------------------------------------------------ */
+
+void test_utf8_4byte_f4_valid(void)
+{
+    /* b0=0xF4, b1=0x80, b2=0x80, b3=0x80 → U+100000.
+     * All four conditions in the compound predicate are true. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x80\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_4byte_f4_valid passed!\n");
+}
+
+void test_utf8_4byte_f4_valid_boundary_max(void)
+{
+    /* b0=0xF4, b1=0x8F, b2=0xBF, b3=0xBF → U+10FFFF (maximum Unicode scalar).
+     * Shows b1 <= 0x8FU is satisfied at its upper boundary. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x8F\xBF\xBF\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+    printf("test_utf8_4byte_f4_valid_boundary_max passed!\n");
+}
+
+void test_utf8_4byte_f4_b1_below_range(void)
+{
+    /* b0=0xF4, b1=0x7F (one below the 0x80 lower bound), b2=0x80, b3=0x80.
+     * Independently kills: b1 >= 0x80U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x7F\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f4_b1_below_range passed!\n");
+}
+
+void test_utf8_4byte_f4_b1_above_range(void)
+{
+    /* b0=0xF4, b1=0x90 (one above 0x8F upper bound), b2=0x80, b3=0x80.
+     * Encodes above U+10FFFF.
+     * Independently kills: b1 <= 0x8FU. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x90\x80\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f4_b1_above_range passed!\n");
+}
+
+void test_utf8_4byte_f4_b2_not_continuation(void)
+{
+    /* b0=0xF4, b1=0x80 (valid), b2=0x41 (not continuation), b3=0x80.
+     * Independently kills: okj_is_utf8_continuation(b2) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x80\x41\x80\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f4_b2_not_continuation passed!\n");
+}
+
+void test_utf8_4byte_f4_b3_not_continuation(void)
+{
+    /* b0=0xF4, b1=0x80 (valid), b2=0x80 (valid), b3=0x41 (not continuation).
+     * b1 and b2 both pass; only b3 fails.
+     * Independently kills: okj_is_utf8_continuation(b3) != 0U. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"s\":\"\xF4\x80\x80\x41\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+    printf("test_utf8_4byte_f4_b3_not_continuation passed!\n");
 }
 
 void test_array_too_large(void)
@@ -2958,6 +3574,39 @@ int main(int argc, char* argv[])
     test_utf8_invalid_overlong();
     test_utf8_invalid_surrogate();
     test_utf8_invalid_truncated();
+    /* MC/DC tests for okj_validate_utf8_sequence */
+    test_utf8_2byte_valid_boundary_min();
+    test_utf8_2byte_valid_boundary_max();
+    test_utf8_2byte_b1_not_continuation();
+    test_utf8_3byte_e0_valid();
+    test_utf8_3byte_e0_b1_below_range();
+    test_utf8_3byte_e0_b1_above_range();
+    test_utf8_3byte_e0_b2_not_continuation();
+    test_utf8_3byte_e1_ec_boundary_min();
+    test_utf8_3byte_e1_ec_boundary_max();
+    test_utf8_3byte_ee_ef_boundary_min();
+    test_utf8_3byte_ee_ef_boundary_max();
+    test_utf8_3byte_range_b1_not_continuation();
+    test_utf8_3byte_range_b2_not_continuation();
+    test_utf8_3byte_ed_valid();
+    test_utf8_3byte_ed_valid_boundary_max();
+    test_utf8_3byte_ed_b1_below_range();
+    test_utf8_3byte_ed_b2_not_continuation();
+    test_utf8_4byte_f0_b1_below_range();
+    test_utf8_4byte_f0_b1_above_range();
+    test_utf8_4byte_f0_b2_not_continuation();
+    test_utf8_4byte_f0_b3_not_continuation();
+    test_utf8_4byte_f1_f3_valid();
+    test_utf8_4byte_f1_f3_boundary_max();
+    test_utf8_4byte_f1_f3_b1_not_continuation();
+    test_utf8_4byte_f1_f3_b2_not_continuation();
+    test_utf8_4byte_f1_f3_b3_not_continuation();
+    test_utf8_4byte_f4_valid();
+    test_utf8_4byte_f4_valid_boundary_max();
+    test_utf8_4byte_f4_b1_below_range();
+    test_utf8_4byte_f4_b1_above_range();
+    test_utf8_4byte_f4_b2_not_continuation();
+    test_utf8_4byte_f4_b3_not_continuation();
     test_array_too_large();
     test_object_too_large();
     test_object_exactly_32_members();

@@ -122,6 +122,7 @@ void test_truncated_backslash_at_eof(void);
 void test_copy_string_basic(void);
 void test_copy_string_null_terminated(void);
 void test_copy_string_truncation(void);
+void test_copy_string_one_byte_buf(void);
 void test_copy_string_exact_fit(void);
 void test_copy_string_null_inputs(void);
 void test_find_key_over_max_len(void);
@@ -2299,6 +2300,36 @@ void test_copy_string_truncation(void)
     printf("test_copy_string_truncation passed!\n");
 }
 
+void test_copy_string_one_byte_buf(void)
+{
+    /* When buf_size == 1, copy_len collapses to 0 and buf[0] must be '\0'.
+     * This proves the API never overflows the smallest possible destination. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          buf[1];           /* only room for the null terminator */
+    uint16_t      copied;
+
+    char json_str[] = "{\"x\": \"Hello\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "x");
+    assert(str != NULL);
+    assert(str->length == 5U);
+
+    /* Sentinel: fill with a non-zero value so we can confirm it was overwritten. */
+    buf[0] = 'Z';
+
+    copied = okj_copy_string(str, buf, (uint16_t)sizeof(buf));
+
+    assert(copied == 0U);           /* no data bytes fit; copy_len = buf_size-1 = 0 */
+    assert(buf[0] == '\0');         /* null terminator must occupy the sole byte */
+
+    printf("test_copy_string_one_byte_buf passed!\n");
+}
+
 void test_copy_string_exact_fit(void)
 {
     /* A buffer of exactly (length + 1) bytes must hold the full string
@@ -3668,6 +3699,7 @@ int main(int argc, char* argv[])
     test_copy_string_basic();
     test_copy_string_null_terminated();
     test_copy_string_truncation();
+    test_copy_string_one_byte_buf();
     test_copy_string_exact_fit();
     test_copy_string_null_inputs();
     test_find_key_over_max_len();

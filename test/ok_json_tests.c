@@ -124,6 +124,7 @@ void test_top_level_boolean(void);
 void test_top_level_null(void);
 void test_iot_sensor_json(void);
 void test_user_data_json(void);
+void test_deeply_nested_valid_json(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -2572,6 +2573,107 @@ void test_user_data_json(void)
     printf("test_user_data_json passed!\n");
 }
 
+void test_deeply_nested_valid_json(void)
+{
+    /* Parse a deeply nested infrastructure-style JSON object and verify:
+     *
+     * Structure (15 levels deep — within OKJ_MAX_DEPTH of 16):
+     *   region -> datacenter -> rack -> server -> vm -> os ->
+     *   filesystem -> var -> log -> app -> module -> component ->
+     *   settings (array) -> settings[0] (object) -> id, active
+     *
+     * Expected token count: 32
+     *   14 OKJ_OBJECT tokens  (top + 12 nesting layers + settings[0])
+     *    1 OKJ_ARRAY  token   (settings)
+     *   13 OKJ_STRING keys    (region … component, settings, id, active)
+     *    1 OKJ_NUMBER token   (42)
+     *    1 OKJ_BOOLEAN token  (true)
+     *   -- NOTE: "id" and "active" count toward the 15 string keys total:
+     *      region, datacenter, rack, server, vm, os, filesystem, var, log,
+     *      app, module, component, settings (13) + id, active (2) = 15
+     *   Total = 14 + 1 + 15 + 1 + 1 = 32
+     */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    OkJsonArray  *arr;
+    OkJsonNumber *num;
+    OkJsonBoolean *bval;
+
+    char json_str[] =
+        "{"
+          "\"region\":{"
+            "\"datacenter\":{"
+              "\"rack\":{"
+                "\"server\":{"
+                  "\"vm\":{"
+                    "\"os\":{"
+                      "\"filesystem\":{"
+                        "\"var\":{"
+                          "\"log\":{"
+                            "\"app\":{"
+                              "\"module\":{"
+                                "\"component\":{"
+                                  "\"settings\":[{"
+                                    "\"id\":42,"
+                                    "\"active\":true"
+                                  "}]"
+                                "}"
+                              "}"
+                            "}"
+                          "}"
+                        "}"
+                      "}"
+                    "}"
+                  "}"
+                "}"
+              "}"
+            "}"
+          "}"
+        "}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Token budget */
+    assert(parser.token_count == 32U);
+    assert(parser.tokens[0].type  == OKJ_OBJECT);
+    assert(parser.tokens[26].type == OKJ_ARRAY);    /* settings array      */
+    assert(parser.tokens[27].type == OKJ_OBJECT);   /* settings[0] object  */
+    assert(parser.tokens[29].type == OKJ_NUMBER);   /* 42                  */
+    assert(parser.tokens[31].type == OKJ_BOOLEAN);  /* true                */
+
+    /* Container counts */
+    assert(okj_count_objects(&parser) == 14U);
+    assert(okj_count_arrays(&parser)  == 1U);
+
+    /* Nested object lookups — each single-member object */
+    obj = okj_get_object(&parser, "region");
+    assert(obj != NULL);
+    assert(obj->count == 1U);
+
+    obj = okj_get_object(&parser, "component");
+    assert(obj != NULL);
+    assert(obj->count == 1U);   /* sole member: settings */
+
+    /* settings array contains exactly one element */
+    arr = okj_get_array(&parser, "settings");
+    assert(arr != NULL);
+    assert(arr->count == 1U);
+
+    /* Leaf values inside settings[0] */
+    num = okj_get_number(&parser, "id");
+    assert(num != NULL);
+    assert(num->length == 2U);   /* "42" */
+    assert(num->start[0] == '4');
+
+    bval = okj_get_boolean(&parser, "active");
+    assert(bval != NULL);
+    assert(bval->start[0] == 't');   /* true */
+
+    printf("test_deeply_nested_valid_json passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -2674,6 +2776,7 @@ int main(int argc, char* argv[])
     test_top_level_null();
     test_iot_sensor_json();
     test_user_data_json();
+    test_deeply_nested_valid_json();
 
     printf("All OK_JSON tests passed!\n");
 

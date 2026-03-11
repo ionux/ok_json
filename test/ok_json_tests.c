@@ -122,6 +122,7 @@ void test_top_level_number(void);
 void test_top_level_string(void);
 void test_top_level_boolean(void);
 void test_top_level_null(void);
+void test_iot_sensor_json(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -2252,6 +2253,171 @@ void test_top_level_null(void)
     printf("test_top_level_null passed!\n");
 }
 
+void test_iot_sensor_json(void)
+{
+    /* Parse a realistic IoT sensor payload that exercises all major JSON
+     * value types at once:
+     *   - Top-level string fields  (deviceId, deviceModel)
+     *   - Boolean values           (isActive: true, requiresMaintenance: false)
+     *   - Null value               (assignedLocation)
+     *   - Integer and float numbers (batteryLevel, uptimeSeconds, signalStrength)
+     *   - Nested object            (networkFeatures, calibrationData)
+     *   - Array of numbers         (recentTemperatures, 4 elements)
+     *   - Array of strings         (systemTags, 3 elements)
+     *   - Scientific-notation number (scaleFactor: 1.002e1)
+     *   - Negative float           (baseOffset: -0.45)
+     *   - Empty array              (pendingErrorCodes: [])
+     *
+     * Expected token count: 48
+     *   1  root OKJ_OBJECT
+     *   16 top-level primitive key-value pairs  (8 pairs × 2)
+     *   10 networkFeatures key + OKJ_OBJECT + 4 inner key-value pairs (2+8)
+     *    6 recentTemperatures key + OKJ_ARRAY + 4 NUMBER elements (2+4)
+     *    5 systemTags key + OKJ_ARRAY + 3 STRING elements (2+3)
+     *   10 calibrationData key + OKJ_OBJECT + 4 inner key-value pairs (2+8)
+     */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    OkJsonNumber *num;
+    OkJsonBoolean *bval;
+    OkJsonToken  *tok;
+    OkJsonObject *obj;
+    OkJsonArray  *arr;
+    char          buf[32];
+
+    char json_str[] =
+        "{"
+        "\"deviceId\": \"sens-a83-992b\","
+        "\"deviceModel\": \"TempSense-X\","
+        "\"isActive\": true,"
+        "\"requiresMaintenance\": false,"
+        "\"assignedLocation\": null,"
+        "\"batteryLevel\": 87.5,"
+        "\"uptimeSeconds\": 145920,"
+        "\"signalStrength\": -65,"
+        "\"networkFeatures\": {"
+            "\"wifiEnabled\": true,"
+            "\"bluetoothEnabled\": false,"
+            "\"ipv4Address\": \"192.168.4.105\","
+            "\"macAddress\": \"00:1B:44:11:3A:B7\""
+        "},"
+        "\"recentTemperatures\": [22.4, 22.5, 22.1, 21.9],"
+        "\"systemTags\": [\"hvac-monitor\", \"zone-1\", \"primary\"],"
+        "\"calibrationData\": {"
+            "\"baseOffset\": -0.45,"
+            "\"scaleFactor\": 1.002e1,"
+            "\"lastRunTimestamp\": \"2026-03-10T08:15:30Z\","
+            "\"pendingErrorCodes\": []"
+        "}"
+        "}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Token budget */
+    assert(parser.token_count == 48U);
+    assert(parser.tokens[0].type == OKJ_OBJECT);
+
+    /* Object and array counts (root + networkFeatures + calibrationData = 3
+     * objects; recentTemperatures + systemTags + pendingErrorCodes = 3 arrays) */
+    assert(okj_count_objects(&parser) == 3U);
+    assert(okj_count_arrays(&parser)  == 3U);
+
+    /* --- top-level string fields --- */
+    str = okj_get_string(&parser, "deviceId");
+    assert(str != NULL);
+    assert(str->length == 13U);   /* "sens-a83-992b" */
+    assert(str->start[0] == 's');
+
+    /* copy_string round-trip on deviceId */
+    assert(okj_copy_string(str, buf, (uint16_t)sizeof(buf)) == 13U);
+    assert(buf[0] == 's');
+    assert(buf[13] == '\0');
+
+    str = okj_get_string(&parser, "deviceModel");
+    assert(str != NULL);
+    assert(str->length == 11U);   /* "TempSense-X" */
+    assert(str->start[0] == 'T');
+
+    /* --- boolean fields --- */
+    bval = okj_get_boolean(&parser, "isActive");
+    assert(bval != NULL);
+    assert(bval->start[0] == 't');   /* true */
+
+    bval = okj_get_boolean(&parser, "requiresMaintenance");
+    assert(bval != NULL);
+    assert(bval->start[0] == 'f');   /* false */
+
+    /* --- null field --- */
+    tok = okj_get_token(&parser, "assignedLocation");
+    assert(tok != NULL);
+    assert(tok->type   == OKJ_NULL);
+    assert(tok->length == 4U);   /* 'n','u','l','l' */
+
+    /* --- numeric fields --- */
+    num = okj_get_number(&parser, "batteryLevel");
+    assert(num != NULL);
+    assert(num->length == 4U);   /* "87.5" */
+
+    num = okj_get_number(&parser, "uptimeSeconds");
+    assert(num != NULL);
+    assert(num->length == 6U);   /* "145920" */
+
+    num = okj_get_number(&parser, "signalStrength");
+    assert(num != NULL);
+    assert(num->start[0] == '-');
+    assert(num->length == 3U);   /* "-65" */
+
+    /* --- nested object: networkFeatures --- */
+    obj = okj_get_object(&parser, "networkFeatures");
+    assert(obj != NULL);
+    assert(obj->count == 4U);   /* wifiEnabled, bluetoothEnabled, ipv4Address, macAddress */
+
+    str = okj_get_string(&parser, "ipv4Address");
+    assert(str != NULL);
+    assert(str->length == 13U);   /* "192.168.4.105" */
+
+    str = okj_get_string(&parser, "macAddress");
+    assert(str != NULL);
+    assert(str->length == 17U);   /* "00:1B:44:11:3A:B7" */
+
+    /* --- array of numbers: recentTemperatures --- */
+    arr = okj_get_array(&parser, "recentTemperatures");
+    assert(arr != NULL);
+    assert(arr->count == 4U);
+
+    /* --- array of strings: systemTags --- */
+    arr = okj_get_array(&parser, "systemTags");
+    assert(arr != NULL);
+    assert(arr->count == 3U);
+
+    /* --- nested object: calibrationData --- */
+    obj = okj_get_object(&parser, "calibrationData");
+    assert(obj != NULL);
+    assert(obj->count == 4U);   /* baseOffset, scaleFactor, lastRunTimestamp, pendingErrorCodes */
+
+    num = okj_get_number(&parser, "baseOffset");
+    assert(num != NULL);
+    assert(num->start[0] == '-');
+    assert(num->length == 5U);   /* "-0.45" */
+
+    num = okj_get_number(&parser, "scaleFactor");
+    assert(num != NULL);
+    assert(num->length == 7U);   /* "1.002e1" */
+
+    str = okj_get_string(&parser, "lastRunTimestamp");
+    assert(str != NULL);
+    assert(str->length == 20U);   /* "2026-03-10T08:15:30Z" */
+
+    /* --- empty array: pendingErrorCodes --- */
+    arr = okj_get_array(&parser, "pendingErrorCodes");
+    assert(arr != NULL);
+    assert(arr->count == 0U);
+
+    printf("test_iot_sensor_json passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -2352,6 +2518,7 @@ int main(int argc, char* argv[])
     test_top_level_string();
     test_top_level_boolean();
     test_top_level_null();
+    test_iot_sensor_json();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -160,6 +160,7 @@ void test_iot_sensor_json(void);
 void test_user_data_json(void);
 void test_deeply_nested_valid_json(void);
 void test_upper_limits_json(void);
+void test_null_byte_in_string_value(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3533,6 +3534,42 @@ void test_upper_limits_json(void)
     printf("test_upper_limits_json passed!\n");
 }
 
+void test_null_byte_in_string_value(void)
+{
+    /* Verify that a literal null byte injected into the middle of a JSON
+     * string value is caught by the parser.  A string literal cannot be used
+     * here because the C compiler would truncate it at the embedded '\0';
+     * the payload is therefore built as an explicit character array so that
+     * the full byte sequence — including the null byte at offset 12 — is
+     * preserved in memory.
+     *
+     * Payload (18 bytes + final NUL):
+     *   { " k e y " :   " v a l \0 u e " }
+     *   0 1 2 3 4 5 6 7 8 9 ...          17
+     *
+     * The parser's string-scan loop exits on '\0' (its loop condition checks
+     * != '\0'), so it never reaches the closing '"'.  The post-loop check
+     * then sees '\0' instead of '"' and returns OKJ_ERROR_UNEXPECTED_END. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Build {"key": "val\0ue"} manually — cannot use a string literal. */
+    char json_str[] = {
+        '{', '"', 'k', 'e', 'y', '"', ':', ' ', '"', 'v', 'a', 'l',
+        '\0',           /* injected null byte inside the value string */
+        'u', 'e', '"', '}',
+        '\0'            /* actual C-string terminator for okj_init */
+    };
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_null_byte_in_string_value passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -3671,6 +3708,7 @@ int main(int argc, char* argv[])
     test_user_data_json();
     test_deeply_nested_valid_json();
     test_upper_limits_json();
+    test_null_byte_in_string_value();
 
     printf("All OK_JSON tests passed!\n");
 

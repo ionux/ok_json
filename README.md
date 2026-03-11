@@ -86,7 +86,7 @@ make clean  # removes build artifacts
 ```
 
 Requires a C99-capable compiler. Tested with GCC using
-`-Wall -Wextra -Werror -pedantic`.
+`-Wall -Wextra -Werror -std=c99 -pedantic -Iinclude -Wconversion -Wsign-conversion -Wfloat-equal -Wcast-qual -Wcast-align -Wpointer-arith -Wshadow -Wlogical-op -Wundef -Wswitch-default -Wswitch-enum -Wunreachable-code -O0.`
 
 ## Limits
 

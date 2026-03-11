@@ -24,7 +24,7 @@ if (okj_parse(&parser) != OKJ_SUCCESS) {
     /* handle parse error */
 }
 
-/* 3. Retrieve values by key */
+/* 3. Retrieve scalar values by key */
 OkJsonNumber  *temp  = okj_get_number(&parser,  "temp");
 OkJsonString  *unit  = okj_get_string(&parser,  "unit");
 OkJsonBoolean *valid = okj_get_boolean(&parser, "valid");
@@ -32,10 +32,53 @@ OkJsonBoolean *valid = okj_get_boolean(&parser, "valid");
 if (temp  != NULL) { /* temp->start points to "42", temp->length == 2  */ }
 if (unit  != NULL) { /* unit->start points to "C",  unit->length == 1  */ }
 if (valid != NULL) { /* valid->start points to "true", valid->length == 4 */ }
+
+/* 4. Copy a string value into a caller-supplied buffer */
+char buf[32];
+if (unit != NULL) {
+    okj_copy_string(unit, buf, sizeof(buf)); /* buf == "C\0" */
+}
 ```
 
 All getter functions return `NULL` when the key is not found or when the value
 type does not match the requested type.
+
+## API Reference
+
+### Lifecycle
+
+| Function | Description |
+|----------|-------------|
+| `okj_init(parser, json_string)` | Initialise the parser with a mutable JSON string |
+| `okj_parse(parser)` | Tokenise the JSON string; returns `OkjError` |
+
+### Value Getters
+
+| Function | Returns |
+|----------|---------|
+| `okj_get_string(parser, key)` | `OkJsonString *` — quotes excluded |
+| `okj_get_number(parser, key)` | `OkJsonNumber *` — raw numeric text |
+| `okj_get_boolean(parser, key)` | `OkJsonBoolean *` — `"true"` or `"false"` literal |
+| `okj_get_array(parser, key)` | `OkJsonArray *` — enforces `OKJ_MAX_ARRAY_SIZE` |
+| `okj_get_object(parser, key)` | `OkJsonObject *` — enforces `OKJ_MAX_OBJECT_SIZE` |
+| `okj_get_array_raw(parser, key)` | `OkJsonArray *` — full raw array text, no size limit |
+| `okj_get_object_raw(parser, key)` | `OkJsonObject *` — full raw object text, no size limit |
+| `okj_get_token(parser, key)` | `OkJsonToken *` — raw token from the parser's token array |
+
+### Utilities
+
+| Function | Description |
+|----------|-------------|
+| `okj_copy_string(str, buf, buf_size)` | Copy string content into a caller buffer with NUL termination |
+| `okj_count_objects(parser)` | Count all `OKJ_OBJECT` tokens in the parsed result |
+| `okj_count_arrays(parser)` | Count all `OKJ_ARRAY` tokens in the parsed result |
+| `okj_count_elements(parser)` | Return the total token count (`parser->token_count`) |
+
+### Debug (compile with `-DOK_JSON_DEBUG`)
+
+| Function | Description |
+|----------|-------------|
+| `okj_debug_print(parser)` | Print a human-readable dump of every token to stdout |
 
 ## Building
 
@@ -49,14 +92,18 @@ Requires a C99-capable compiler. Tested with GCC using
 
 ## Limits
 
-| Constant            | Default | Description                  |
-|---------------------|---------|------------------------------|
-| `OKJ_MAX_TOKENS`    | 128     | Maximum tokens per parse     |
-| `OKJ_MAX_STRING_LEN`| 64      | Maximum key/string length    |
-| `OKJ_MAX_ARRAY_SIZE`| 64      | Maximum array element count  |
-| `OKJ_MAX_OBJECT_SIZE`| 64     | Maximum object member count  |
+| Constant              | Default | Description                                  |
+|-----------------------|---------|----------------------------------------------|
+| `OKJ_MAX_TOKENS`      | 128     | Maximum tokens per parse                     |
+| `OKJ_MAX_DEPTH`       | 16      | Maximum nesting depth for objects and arrays |
+| `OKJ_MAX_STRING_LEN`  | 64      | Maximum key/string length in bytes           |
+| `OKJ_MAX_ARRAY_SIZE`  | 64      | Maximum array element count                  |
+| `OKJ_MAX_OBJECT_SIZE` | 32      | Maximum object member count                  |
+| `OKJ_MAX_JSON_LEN`    | 4096    | Maximum raw JSON input length in bytes       |
 
-All limits are compile-time constants.
+`OKJ_MAX_TOKENS` and `OKJ_MAX_DEPTH` are preprocessor macros (used as array
+dimensions in struct definitions). The remaining limits are `static const`
+values defined in the header. All can be overridden at compile time.
 
 ## Wiki
 

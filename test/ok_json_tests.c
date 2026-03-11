@@ -67,6 +67,7 @@ void test_utf8_invalid_surrogate(void);
 void test_utf8_invalid_truncated(void);
 void test_array_too_large(void);
 void test_object_too_large(void);
+void test_object_exactly_32_members(void);
 void test_get_array_raw(void);
 void test_get_object_raw(void);
 void test_count_objects(void);
@@ -1042,6 +1043,73 @@ void test_object_too_large(void)
     assert(obj == NULL);               /* 33 > OKJ_MAX_OBJECT_SIZE(32)  */
 
     printf("test_object_too_large passed!\n");
+}
+
+void test_object_exactly_32_members(void)
+{
+    /* Build {"data": {"k0":1,"k1":1,...,"k31":1}} — exactly 32 members in
+     * the nested object, matching OKJ_MAX_OBJECT_SIZE (32).  Parsing must
+     * succeed and okj_get_object() must return a non-NULL pointer whose
+     * count equals 32. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    OkJsonObject *obj;
+
+    /* Worst-case size: 9 + 244 + 2 + 1 = 256 bytes */
+    char     json_str[256];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    /* Outer wrapper: {"data": { */
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'd';
+    json_str[pos++] = 'a';
+    json_str[pos++] = 't';
+    json_str[pos++] = 'a';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '{';
+
+    /* 32 members: "k0":1 … "k31":1 */
+    for (i = 0U; i < 32U; i++)
+    {
+        if (i > 0U) { json_str[pos++] = ','; }
+
+        json_str[pos++] = '"';
+        json_str[pos++] = 'k';
+
+        if (i < 10U)
+        {
+            json_str[pos++] = (char)('0' + (char)i);
+        }
+        else
+        {
+            json_str[pos++] = (char)('0' + (char)(i / 10U));
+            json_str[pos++] = (char)('0' + (char)(i % 10U));
+        }
+
+        json_str[pos++] = '"';
+        json_str[pos++] = ':';
+        json_str[pos++] = '1';
+    }
+
+    json_str[pos++] = '}';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);         /* 67 tokens — well within limit  */
+
+    obj = okj_get_object(&parser, "data");
+
+    assert(obj != NULL);                   /* exactly 32 == OKJ_MAX_OBJECT_SIZE */
+    assert(obj->count == 32U);
+
+    printf("test_object_exactly_32_members passed!\n");
 }
 
 void test_get_array_raw(void)
@@ -2892,6 +2960,7 @@ int main(int argc, char* argv[])
     test_utf8_invalid_truncated();
     test_array_too_large();
     test_object_too_large();
+    test_object_exactly_32_members();
     test_get_array_raw();
     test_get_object_raw();
     test_count_objects();

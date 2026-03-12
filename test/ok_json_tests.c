@@ -60,6 +60,7 @@ void test_escape_other_single_char(void);
 void test_escape_unicode_valid(void);
 void test_escape_unicode_invalid_hex(void);
 void test_escape_unicode_truncated(void);
+void test_escape_unicode_surrogate_pair(void);
 void test_escape_unknown(void);
 void test_utf8_valid_multibyte(void);
 void test_utf8_invalid_overlong(void);
@@ -879,6 +880,37 @@ void test_escape_unicode_truncated(void)
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
 
     printf("test_escape_unicode_truncated passed!\n");
+}
+
+void test_escape_unicode_surrogate_pair(void)
+{
+    /* RFC 8259 allows code points outside the BMP to be encoded as a
+     * 12-character surrogate pair (e.g. \uD83D\uDE00 for U+1F600 😀).
+     * Because ok_json is a raw tokenizer it stores the escape sequences
+     * verbatim, so the token for the value must be exactly 12 bytes:
+     *   \,u,D,8,3,D,\,u,D,E,0,0
+     * Neither \uXXXX sequence must trigger OKJ_ERROR_BAD_STRING because
+     * every character in both sequences is a valid hexadecimal digit. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+
+    /* JSON: {"emoji": "\uD83D\uDE00"} */
+    char json_str[] = "{\"emoji\": \"\\uD83D\\uDE00\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "emoji");
+
+    assert(str != NULL);
+    assert(str->length == 12U);     /* \,u,D,8,3,D,\,u,D,E,0,0 */
+    assert(str->start[0] == '\\');
+    assert(str->start[1] == 'u');
+    assert(str->start[6] == '\\');  /* start of second \uXXXX */
+    assert(str->start[7] == 'u');
+
+    printf("test_escape_unicode_surrogate_pair passed!\n");
 }
 
 void test_escape_unknown(void)
@@ -3817,6 +3849,7 @@ int main(int argc, char* argv[])
     test_escape_unicode_valid();
     test_escape_unicode_invalid_hex();
     test_escape_unicode_truncated();
+    test_escape_unicode_surrogate_pair();
     test_escape_unknown();
     test_utf8_valid_multibyte();
     test_utf8_invalid_overlong();

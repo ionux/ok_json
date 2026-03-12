@@ -840,7 +840,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         tok->type  = OKJ_NUMBER;
         tok->start = &parser->json[parser->position];
 
-        start_pos  = parser->position;
+        uint16_t start_pos  = parser->position;
 
         /* Step 1: optional leading minus */
         if (c == '-')
@@ -1319,10 +1319,12 @@ OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key)
 
 uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
 {
+    uint16_t copy_len = 0U;
+
     if ((str != NULL) && (buf != NULL) && (buf_size != 0U))
     {
         /* Copy at most (buf_size - 1) bytes to leave room for the null terminator. */
-        uint16_t copy_len = str->length;
+        copy_len = str->length;
 
         if (copy_len >= buf_size)
         {

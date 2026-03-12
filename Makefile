@@ -19,5 +19,11 @@ test: ok_json.a $(TEST_OBJ)
 	$(CC) $(CFLAGS) -o test/ok_json_test_runner $(TEST_OBJ) ok_json.a
 	./test/ok_json_test_runner
 
+coverage: CFLAGS += --coverage
+coverage: clean test
+	gcovr -r . --xml-pretty -o coverage.xml
+	gcovr -r .
+
 clean:
-	rm -f $(OBJ) $(TEST_OBJ) ok_json.a test/ok_json_test_runner
+	rm -f $(OBJ) $(TEST_OBJ) ok_json.a test/ok_json_test_runner \
+	      *.gcno *.gcda src/*.gcno src/*.gcda test/*.gcno test/*.gcda coverage.xml

@@ -172,6 +172,7 @@ void test_number_large_near_json_limit(void);
 void test_rfc8259_all_whitespace_between_tokens(void);
 void test_control_char_tab_in_string_value(void);
 void test_control_char_lf_in_string_value(void);
+void test_quoted_string_spoofing(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4050,6 +4051,57 @@ void test_control_char_lf_in_string_value(void)
     printf("test_control_char_lf_in_string_value passed!\n");
 }
 
+void test_quoted_string_spoofing(void)
+{
+    /* Parse a JSON object whose array value contains string elements that
+     * look like structural JSON characters: '{', '}', '[', ']', and ','.
+     * These characters must be ignored by the raw-measurement and element-
+     * counting helpers because they appear inside quoted strings.
+     *
+     * Payload: {"tricky": ["{", "}", "[", "]", ","]}
+     *
+     * Expected results:
+     *   okj_count_elements() == 8
+     *     (1 object + 1 key string + 1 array + 5 element strings)
+     *   arr->count  == 5   (five genuine string elements)
+     *   arr->length == 25  (byte length of the array text, see below)
+     *
+     * Array text byte count:
+     *   [ " { " ,   " } " ,   " [ " ,   " ] " ,   " , " ]
+     *   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+     *                     1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2
+     * = 25 bytes
+     */
+
+    OkJsonParser parser;
+    OkJsonArray *arr;
+
+    char json_str[] = "{\"tricky\": [\"{\", \"}\", \"[\", \"]\", \",\"]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Total token count must equal real tokens only – the fake structural
+     * characters inside the strings must not inflate this number. */
+    assert(okj_count_elements(&parser) == 8U);
+
+    arr = okj_get_array_raw(&parser, "tricky");
+
+    assert(arr != NULL);
+    assert(arr->start[0] == '[');
+
+    /* okj_count_array_elements() must not be fooled by '{' '}' '[' ']' ','
+     * characters that live inside quoted strings. */
+    assert(arr->count == 5U);
+
+    /* okj_measure_container() must traverse the full array text, skipping
+     * every string's body so that the brackets and commas within quotes do
+     * not prematurely terminate or mis-count the length measurement. */
+    assert(arr->length == 25U);
+
+    printf("test_quoted_string_spoofing passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4204,6 +4256,9 @@ int main(int argc, char* argv[])
     /* RFC 8259 §7 bare control character rejection (U+0000–U+001F) */
     test_control_char_tab_in_string_value();
     test_control_char_lf_in_string_value();
+
+    /* okj_skip_string() robustness: structural chars inside quoted strings */
+    test_quoted_string_spoofing();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -50,12 +50,14 @@ static uint8_t okj_is_hex_digit(char c)
 
 static uint8_t okj_is_utf8_continuation(uint8_t byte)
 {
+    uint8_t result = 0U;
+    
     if ((byte & 0xC0U) == 0x80U)
     {
-        return 1U;
+        result = 1U;
     }
 
-    return 0U;
+    return result;
 }
 
 /* Validate one UTF-8 scalar-value sequence starting at src[pos].
@@ -181,16 +183,18 @@ static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
 
     if ((src == NULL) || (lit == NULL))
     {
-        return 0U;
+        result = 0U;
     }
-
-    uint16_t i;
-
-    for (i = 0U; (i < len) && (result != 0U); i++)
+    else
     {
-        if ((src[i] == '\0') || (src[i] != lit[i]))
+        uint16_t i;
+
+        for (i = 0U; (i < len) && (result != 0U); i++)
         {
-            result = 0U;
+            if ((src[i] == '\0') || (src[i] != lit[i]))
+            {
+                result = 0U;
+            }
         }
     }
 
@@ -402,6 +406,7 @@ static uint16_t okj_measure_container(const char *start)
                 if (*p == '\\')
                 {
                     p++;
+
                     if (*p != '\0')
                     {
                         length++;
@@ -412,6 +417,7 @@ static uint16_t okj_measure_container(const char *start)
                 {
                     p++;
                 }
+
                 length++;
             }
 
@@ -505,8 +511,8 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 
 static OkjError okj_parse_value(OkJsonParser *parser)
 {
-    OkjError    result    = OKJ_SUCCESS;
-    OkJsonToken *tok      = NULL;
+    OkjError    result  = OKJ_SUCCESS;
+    OkJsonToken *tok    = NULL;
 
     if (parser == NULL)
     {
@@ -1117,7 +1123,7 @@ OkjError okj_parse(OkJsonParser *parser)
  * not found. */
 static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
 {
-    uint16_t result  = OKJ_MAX_TOKENS;
+    uint16_t result = OKJ_MAX_TOKENS;
 
     if ((parser != NULL) && (key != NULL))
     {

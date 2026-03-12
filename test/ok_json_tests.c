@@ -170,6 +170,8 @@ void test_duplicate_key_first_match_wins(void);
 void test_empty_string_key(void);
 void test_number_large_near_json_limit(void);
 void test_rfc8259_all_whitespace_between_tokens(void);
+void test_control_char_tab_in_string_value(void);
+void test_control_char_lf_in_string_value(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3974,6 +3976,80 @@ void test_rfc8259_all_whitespace_between_tokens(void)
     printf("test_rfc8259_all_whitespace_between_tokens passed!\n");
 }
 
+void test_control_char_tab_in_string_value(void)
+{
+    /* RFC 8259 §7 forbids unescaped control characters (U+0000–U+001F)
+     * inside JSON strings.  A literal horizontal-tab byte (0x09, U+0009)
+     * is a control character and must therefore be rejected.
+     *
+     * The parser's inner scan loop reaches the < 0x20U boundary check:
+     *
+     *   if ((unsigned char)parser->json[parser->position] < 0x20U)
+     *       result = OKJ_ERROR_BAD_STRING;
+     *
+     * 0x09 < 0x20 is true, so the parser must return OKJ_ERROR_BAD_STRING
+     * without crashing.
+     *
+     * Payload bytes: { " s " : " v a l <TAB> u e " }
+     *                0x09 is the raw byte at the position marked <TAB>.
+     *
+     * A regular string literal is used because 0x09 is not a C-string
+     * terminator; the hex escape \x09 is embedded directly. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* {"s":"val\x09ue"} — literal tab byte inside the string value */
+    char json_str[] = "{\"s\":\"val\x09ue\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_control_char_tab_in_string_value passed!\n");
+}
+
+void test_control_char_lf_in_string_value(void)
+{
+    /* RFC 8259 §7 forbids unescaped control characters (U+0000–U+001F)
+     * inside JSON strings.  A literal line-feed byte (0x0A, U+000A) is a
+     * control character and must be rejected.  This is distinct from the
+     * two-character escape sequence \n which is perfectly legal.
+     *
+     * The same < 0x20U boundary check fires here:
+     *
+     *   if ((unsigned char)parser->json[parser->position] < 0x20U)
+     *       result = OKJ_ERROR_BAD_STRING;
+     *
+     * 0x0A < 0x20 is true, so the parser must return OKJ_ERROR_BAD_STRING.
+     *
+     * Payload bytes: { " s " : " v a l <LF> u e " }
+     *                0x0A is the raw byte at the position marked <LF>.
+     *
+     * A raw char array is used to make the embedded 0x0A byte explicit and
+     * to avoid any ambiguity with the \n escape sequence. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Build {"s":"val<LF>ue"} — literal line-feed byte (0x0A) injected
+     * inside the string value, not the two-character escape sequence \n. */
+    char json_str[] = {
+        '{', '"', 's', '"', ':', '"', 'v', 'a', 'l',
+        '\x0A',         /* literal line-feed byte — forbidden control char */
+        'u', 'e', '"', '}',
+        '\0'            /* C-string terminator for okj_init */
+    };
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_control_char_lf_in_string_value passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4124,6 +4200,10 @@ int main(int argc, char* argv[])
 
     /* RFC 8259 whitespace compliance */
     test_rfc8259_all_whitespace_between_tokens();
+
+    /* RFC 8259 §7 bare control character rejection (U+0000–U+001F) */
+    test_control_char_tab_in_string_value();
+    test_control_char_lf_in_string_value();
 
     printf("All OK_JSON tests passed!\n");
 

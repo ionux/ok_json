@@ -223,29 +223,31 @@ static uint8_t okj_is_value_terminator(char c)
  * prematurely terminate the scan. */
 static const char *okj_skip_string(const char *p)
 {
-    p++;    /* skip opening '"' */
+    const char *scan = p;
 
-    while ((*p != '"') && (*p != '\0'))
+    scan++;   /* skip opening '"' */
+
+    while ((*scan != '"') && (*scan != '\0'))
     {
-        if (*p == '\\')
+        if (*scan == '\\')
         {
-            p++;    /* skip the backslash */
+            scan++;    /* skip the backslash */
 
-            if (*p == '\0')
+            if (*scan == '\0')
             {
                 break;  /* truncated input: backslash at end of stream */
             }
         }
 
-        p++;
+        scan++;
     }
 
-    if (*p == '"')
+    if (*scan == '"')
     {
-        p++;    /* skip closing '"' */
+        scan++;    /* skip closing '"' */
     }
 
-    return p;
+    return scan;
 }
 
 /* Count the number of elements in a JSON array whose text begins at `start`
@@ -290,6 +292,7 @@ static uint16_t okj_count_array_elements(const char *start)
                 {
                     seen = 1U;
                 }
+
                 depth++;
             }
             else if ((c == ']') || (c == '}'))

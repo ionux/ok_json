@@ -498,7 +498,6 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 static OkjError okj_parse_value(OkJsonParser *parser)
 {
     OkjError    result    = OKJ_SUCCESS;
-    char        c         = '\0';
     OkJsonToken *tok      = NULL;
     uint16_t    start_pos = 0U;
 
@@ -509,7 +508,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
     okj_skip_whitespace(parser);
 
-    c = parser->json[parser->position];
+    char c = parser->json[parser->position];
 
     if (c == '\0')
     {
@@ -1030,8 +1029,6 @@ OkjError okj_parse(OkJsonParser *parser)
 {
     OkjError result      = OKJ_SUCCESS;
     uint16_t json_len    = 0U;
-    uint16_t prev_tokens = 0U;
-    uint16_t prev_depth  = 0U;
 
     if (parser == NULL)
     {
@@ -1051,8 +1048,8 @@ OkjError okj_parse(OkJsonParser *parser)
     while ((parser->json[parser->position] != '\0') &&
            (parser->token_count < OKJ_MAX_TOKENS))
     {
-        prev_tokens = parser->token_count;
-        prev_depth  = parser->depth;
+        uint16_t prev_tokens = parser->token_count;
+        uint16_t prev_depth  = parser->depth;
 
         result = okj_parse_value(parser);
 
@@ -1114,11 +1111,12 @@ OkjError okj_parse(OkJsonParser *parser)
  * not found. */
 static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
 {
-    uint16_t key_len = 0U;
     uint16_t result  = OKJ_MAX_TOKENS;
 
     if ((parser != NULL) && (key != NULL))
     {
+        uint16_t key_len = 0U;
+
         while ((key_len <= OKJ_MAX_STRING_LEN) && (key[key_len] != '\0'))
         {
             key_len++;

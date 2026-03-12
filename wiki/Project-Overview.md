@@ -22,6 +22,7 @@ Core files:
   - `okj_get_array` / `okj_get_array_raw`
   - `okj_get_object` / `okj_get_object_raw`
   - `okj_get_token`
+- Copy parsed string values into null-terminated buffers via `okj_copy_string`.
 - Count objects, arrays, and total tokens with helper functions.
 
 ## Parser model at a glance
@@ -38,11 +39,12 @@ Because tokens point into input memory, **the input buffer must remain valid for
 
 The parser intentionally relies on fixed limits for deterministic memory usage:
 
-- `OKJ_MAX_TOKENS`
-- `OKJ_MAX_STRING_LEN`
-- `OKJ_MAX_ARRAY_SIZE`
-- `OKJ_MAX_OBJECT_SIZE`
-- `OKJ_MAX_JSON_LEN`
+- `OKJ_MAX_TOKENS` (128) — maximum number of tokens
+- `OKJ_MAX_DEPTH` (16) — maximum container nesting depth
+- `OKJ_MAX_STRING_LEN` (64) — maximum key/string byte length
+- `OKJ_MAX_ARRAY_SIZE` (64) — maximum array elements (non-raw getter)
+- `OKJ_MAX_OBJECT_SIZE` (32) — maximum object members (non-raw getter)
+- `OKJ_MAX_JSON_LEN` (4096) — maximum input length in bytes
 
 These controls are documented in the header and enforced by parsing/getter behavior.
 

@@ -739,7 +739,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                     for (h = 0U; h < 4U; h++)
                     {
-                        if (okj_is_hex_digit(parser->json[parser->position]) == 0)
+                        if (okj_is_hex_digit(parser->json[parser->position]) == 0U)
                         {
                             result = OKJ_ERROR_BAD_STRING;
                             break;
@@ -852,7 +852,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         {
             parser->position++;     /* consume '-' */
 
-            if (okj_is_digit(parser->json[parser->position]) == 0)
+            if (okj_is_digit(parser->json[parser->position]) == 0U)
             {
                 number_ok = 0U;     /* bare minus is not a valid number */
             }
@@ -865,14 +865,14 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             {
                 parser->position++;     /* consume '0' */
 
-                if (okj_is_digit(parser->json[parser->position]) != 0)
+                if (okj_is_digit(parser->json[parser->position]) != 0U)
                 {
                     number_ok = 0U;     /* leading zero: "012" is invalid */
                 }
             }
             else
             {
-                while (okj_is_digit(parser->json[parser->position]) != 0)
+                while (okj_is_digit(parser->json[parser->position]) != 0U)
                 {
                     parser->position++;
                 }
@@ -884,13 +884,13 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         {
             parser->position++;     /* consume '.' */
 
-            if (okj_is_digit(parser->json[parser->position]) == 0)
+            if (okj_is_digit(parser->json[parser->position]) == 0U)
             {
                 number_ok = 0U;     /* decimal point must be followed by a digit */
             }
             else
             {
-                while (okj_is_digit(parser->json[parser->position]) != 0)
+                while (okj_is_digit(parser->json[parser->position]) != 0U)
                 {
                     parser->position++;
                 }
@@ -910,13 +910,13 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 parser->position++;     /* consume optional sign */
             }
 
-            if (okj_is_digit(parser->json[parser->position]) == 0)
+            if (okj_is_digit(parser->json[parser->position]) == 0U)
             {
                 number_ok = 0U;     /* exponent requires at least one digit */
             }
             else
             {
-                while (okj_is_digit(parser->json[parser->position]) != 0)
+                while (okj_is_digit(parser->json[parser->position]) != 0U)
                 {
                     parser->position++;
                 }

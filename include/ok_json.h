@@ -35,10 +35,12 @@
 #ifdef OK_JSON_USE_STDINT_H
 #include <stdint.h>
 #else
-typedef unsigned long long uint64_t;
-typedef unsigned int       uint32_t;
-typedef unsigned short     uint16_t;
-typedef unsigned char      uint8_t;
+/**
+ * Only using shorts and chars for now.  If you need larger data types, define them here.
+ * For example: "typedef unsigned long long uint64_t" or "typedef unsigned int uint32_t".
+ */
+typedef unsigned short  uint16_t;
+typedef unsigned char   uint8_t;
 #endif
 
 /**

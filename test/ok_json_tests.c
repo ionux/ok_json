@@ -162,6 +162,7 @@ void test_user_data_json(void);
 void test_deeply_nested_valid_json(void);
 void test_upper_limits_json(void);
 void test_null_byte_in_string_value(void);
+void test_duplicate_key_first_match_wins(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3601,6 +3602,31 @@ void test_null_byte_in_string_value(void)
     printf("test_null_byte_in_string_value passed!\n");
 }
 
+void test_duplicate_key_first_match_wins(void)
+{
+    /* RFC 8259 §4 leaves the behaviour for duplicate object keys undefined.
+     * ok_json performs a linear scan in okj_find_value_index(), so it always
+     * returns the first matching key.  This test documents and enforces that
+     * "first-match wins" contract so that future changes to the search logic
+     * cannot silently switch to "last-match wins" without breaking a test. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char json_str[] = "{\"x\": 10, \"x\": 99}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "x");
+
+    assert(num != NULL);
+    assert(num->length == 2U);   /* "10" is 2 characters */
+    assert(num->start[0] == '1');
+    assert(num->start[1] == '0');
+
+    printf("test_duplicate_key_first_match_wins passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -3741,6 +3767,7 @@ int main(int argc, char* argv[])
     test_deeply_nested_valid_json();
     test_upper_limits_json();
     test_null_byte_in_string_value();
+    test_duplicate_key_first_match_wins();
 
     printf("All OK_JSON tests passed!\n");
 

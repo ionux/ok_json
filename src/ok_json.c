@@ -1114,16 +1114,17 @@ OkjError okj_parse(OkJsonParser *parser)
  * not found. */
 static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
 {
-    uint16_t i       = 0U;
     uint16_t key_len = 0U;
     uint16_t result  = OKJ_MAX_TOKENS;
 
     if ((parser != NULL) && (key != NULL))
     {
-        while ((key[key_len] != '\0') && (key_len <= OKJ_MAX_STRING_LEN))
+        while ((key_len <= OKJ_MAX_STRING_LEN) && (key[key_len] != '\0'))
         {
             key_len++;
         }
+
+        uint16_t i;
 
         for (i = 0U; (i + 1U) < parser->token_count; i++)
         {

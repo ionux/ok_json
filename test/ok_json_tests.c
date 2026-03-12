@@ -178,6 +178,7 @@ void test_backslash_flood_at_limit(void);
 void test_backslash_flood_one_over(void);
 void test_backslash_straddle_limit(void);
 void test_backslash_truncated_at_boundary(void);
+void test_okj_match_null_src_and_lit(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4368,6 +4369,50 @@ void test_quoted_string_spoofing(void)
     printf("test_quoted_string_spoofing passed!\n");
 }
 
+void test_okj_match_null_src_and_lit(void)
+{
+    /* okj_match() guards against NULL src and lit by immediately returning 0.
+     * Because okj_match() is a static helper it cannot be called directly;
+     * both NULL branches are exercised indirectly:
+     *
+     * NULL src: We hand-craft an OkJsonParser whose STRING token has a NULL
+     *           start pointer, then call okj_get_string().  The lookup path
+     *           okj_get_string() -> okj_find_value_index() ->
+     *           okj_match(NULL, key, len) must return 0 (no match) without
+     *           crashing, causing the getter to return NULL.
+     *
+     * NULL lit: All callers of okj_match() inside ok_json.c either pass a
+     *           string-literal keyword ("true"/"false"/"null") or the key
+     *           argument, which is guarded by okj_find_value_index()'s own
+     *           NULL check.  Passing NULL as the key to okj_get_string() is
+     *           therefore caught at the public-API boundary before okj_match()
+     *           is ever reached, and the function returns NULL gracefully. */
+
+    OkJsonParser  parser = {0};
+    OkJsonString *result;
+
+    /* Hand-craft a parser state with a STRING token whose start is NULL.
+     * token_count == 2 causes okj_find_value_index() to iterate once (i == 0).
+     * The token passes the type and length checks (OKJ_STRING, length == 1),
+     * so okj_match(NULL, "x", 1U) is called, triggering the src-NULL guard
+     * which returns 0, meaning the match fails and the getter returns NULL. */
+    parser.token_count      = 2U;
+    parser.tokens[0].type   = OKJ_STRING;
+    parser.tokens[0].start  = NULL;
+    parser.tokens[0].length = 1U;  /* same length as the lookup key "x" */
+
+    /* NULL src: okj_match(NULL, "x", 1) -> 0; getter must return NULL. */
+    result = okj_get_string(&parser, "x");
+    assert(result == NULL);
+
+    /* NULL lit: okj_get_string() rejects a NULL key before reaching
+     * okj_match(), so the result is NULL without touching okj_match(). */
+    result = okj_get_string(&parser, NULL);
+    assert(result == NULL);
+
+    printf("test_okj_match_null_src_and_lit passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4534,6 +4579,9 @@ int main(int argc, char* argv[])
     test_backslash_flood_one_over();
     test_backslash_straddle_limit();
     test_backslash_truncated_at_boundary();
+
+    /* okj_match() NULL src and lit parameter guard */
+    test_okj_match_null_src_and_lit();
 
     printf("All OK_JSON tests passed!\n");
 

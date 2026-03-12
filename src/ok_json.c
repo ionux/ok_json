@@ -1357,18 +1357,16 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
 uint16_t okj_count_objects(OkJsonParser *parser)
 {
     uint16_t count = 0U;
-    uint16_t i;
+    uint16_t i     = 0U;
 
-    if (parser == NULL)
+    if (parser != NULL)
     {
-        return 0U;
-    }
-
-    for (i = 0U; i < parser->token_count; i++)
-    {
-        if (parser->tokens[i].type == OKJ_OBJECT)
+        for (i = 0U; i < parser->token_count; i++)
         {
-            count++;
+            if (parser->tokens[i].type == OKJ_OBJECT)
+            {
+                count++;
+            }
         }
     }
 
@@ -1378,18 +1376,16 @@ uint16_t okj_count_objects(OkJsonParser *parser)
 uint16_t okj_count_arrays(OkJsonParser *parser)
 {
     uint16_t count = 0U;
-    uint16_t i;
+    uint16_t i     = 0U;
 
-    if (parser == NULL)
+    if (parser != NULL)
     {
-        return 0U;
-    }
-
-    for (i = 0U; i < parser->token_count; i++)
-    {
-        if (parser->tokens[i].type == OKJ_ARRAY)
+        for (i = 0U; i < parser->token_count; i++)
         {
-            count++;
+            if (parser->tokens[i].type == OKJ_ARRAY)
+            {
+                count++;
+            }
         }
     }
 

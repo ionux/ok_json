@@ -794,6 +794,15 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             /* Position is at '\0': input ended before the closing quote. */
             result = OKJ_ERROR_UNEXPECTED_END;
         }
+        else if ((parser->position - start_pos) > OKJ_MAX_STRING_LEN)
+        {
+            /* An escape sequence whose first byte landed just below the
+             * OKJ_MAX_STRING_LEN ceiling advanced position one past the
+             * limit in a single loop iteration before the top-of-loop
+             * length check could fire.  The raw string content therefore
+             * exceeds the declared maximum; reject it. */
+            result = OKJ_ERROR_MAX_STR_LEN_EXCEEDED;
+        }
         else
         {
             tok->length = parser->position - start_pos;

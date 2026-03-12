@@ -136,6 +136,7 @@ void test_depth_stack_extra_close_bracket(void);
 void test_depth_stack_unclosed_object(void);
 void test_depth_stack_unclosed_array(void);
 void test_depth_stack_mixed_nesting(void);
+void test_depth_stack_alternating_unwind(void);
 void test_trailing_whitespace_after_object(void);
 void test_trailing_garbage_after_object(void);
 void test_trailing_garbage_after_array(void);
@@ -2692,6 +2693,57 @@ void test_depth_stack_mixed_nesting(void)
     printf("test_depth_stack_mixed_nesting passed!\n");
 }
 
+void test_depth_stack_alternating_unwind(void)
+{
+    /* Verify that the depth_stack correctly tracks every independent container
+     * type through a full 15-level alternating object/array nesting and then
+     * perfectly unwinds on the way back out without triggering
+     * OKJ_ERROR_BRACKET_MISMATCH at any level.
+     *
+     * Structure (depth_stack slot → container type):
+     *   [0]=OBJ  [1]=ARR  [2]=OBJ  [3]=ARR  [4]=OBJ  [5]=ARR  [6]=OBJ
+     *   [7]=ARR  [8]=OBJ  [9]=ARR  [10]=OBJ [11]=ARR [12]=OBJ [13]=ARR
+     *   [14]=OBJ
+     *
+     * JSON:
+     *   {"a":[{"b":[{"c":[{"d":[{"e":[{"f":[{"g":[{"h":1}]}]}]}]}]}]}]}
+     *
+     * Each closing bracket is validated against depth_stack[parser->depth]
+     * after the pre-decrement, exercising all 15 stack slots:
+     *   }  checks depth_stack[14]==OBJ  ✓
+     *   ]  checks depth_stack[13]==ARR  ✓
+     *   ...continuing up...
+     *   }  checks depth_stack[0] ==OBJ  ✓
+     *
+     * Token budget:
+     *   8 OKJ_OBJECT + 7 OKJ_ARRAY + 8 OKJ_STRING (keys a–h) + 1 OKJ_NUMBER = 24
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    char json_str[] =
+        "{\"a\":[{\"b\":[{\"c\":[{\"d\":[{\"e\":[{\"f\":[{\"g\":[{\"h\":1}]}]}]}]}]}]}]}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    /* The parser must accept the payload without any bracket mismatch. */
+    assert(result == OKJ_SUCCESS);
+
+    /* All 15 containers must be fully closed. */
+    assert(parser.depth == 0U);
+
+    /* Exact token count: 8 objects + 7 arrays + 8 string keys + 1 number. */
+    assert(parser.token_count == 24U);
+
+    /* Container type counts confirm the alternating structure was tracked. */
+    assert(okj_count_objects(&parser) == 8U);
+    assert(okj_count_arrays(&parser)  == 7U);
+
+    printf("test_depth_stack_alternating_unwind passed!\n");
+}
+
 void test_trailing_whitespace_after_object(void)
 {
     /* Trailing whitespace after a valid top-level object must be accepted. */
@@ -3990,6 +4042,7 @@ int main(int argc, char* argv[])
     test_depth_stack_unclosed_object();
     test_depth_stack_unclosed_array();
     test_depth_stack_mixed_nesting();
+    test_depth_stack_alternating_unwind();
     test_trailing_whitespace_after_object();
     test_trailing_garbage_after_object();
     test_trailing_garbage_after_array();

@@ -2,8 +2,8 @@
 
 ## Description
 
-Simple, light, and clean JSON parser suitable for embedded, memory-constrained,
-and safety-critical projects. Written in pure C99 for maximum portability.
+Simple, light, clean, and fully RFC 8259-compliant JSON parser suitable for embedded, memory-constrained,
+and safety-critical projects. Written in pure C99 for maximum portability and exhaustively tested.
 Zero external library dependencies (`stdio.h`, `string.h`, and `ctype.h` are
 not used). Designed with safety-critical coding standards (MISRA C:2012) in mind.
 
@@ -105,7 +105,8 @@ values defined in the header. All can be overridden at compile time.
 
 ## Known Issues
 
-This code is currently not thread safe.  Do not use in a multithreaded context.
+- This code is currently not thread safe.  Do not use in a multithreaded context until the 1.0.0 release corrects this.
+- Not fully compliant with MISRA C:2012 yet.  Will be compliant by the 1.0.0 release, however.
 
 ## Wiki
 

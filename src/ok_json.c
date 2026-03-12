@@ -172,8 +172,13 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
  * Stops early on a NUL byte in `src` to avoid overreads. */
 static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
 {
-    uint16_t i = 0U;
+    uint16_t i     = 0U;
     uint8_t result = 1U;
+
+    if ((src == NULL) || (lit == NULL))
+    {
+        return 0U;
+    }
 
     for (i = 0U; (i < len) && (result != 0U); i++)
     {

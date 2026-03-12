@@ -50,7 +50,12 @@ static uint8_t okj_is_hex_digit(char c)
 
 static uint8_t okj_is_utf8_continuation(uint8_t byte)
 {
-    return (uint8_t)((byte & 0xC0U) == 0x80U);
+    if ((byte & 0xC0U) == 0x80U)
+    {
+        return 1U;
+    }
+
+    return 0U;
 }
 
 /* Validate one UTF-8 scalar-value sequence starting at src[pos].

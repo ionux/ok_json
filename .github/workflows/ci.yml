@@ -31,5 +31,5 @@ jobs:
           gcovr -r . >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-#      - name: Run Cppcheck with MISRA Add-on
-#        run: cppcheck --addon=misra.json --enable=all --error-exitcode=1 --inline-suppr src/
+      - name: Run Cppcheck with MISRA Add-on
+        run: cppcheck --addon=misra.json --enable=all --error-exitcode=1 --inline-suppr src/

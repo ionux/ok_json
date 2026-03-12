@@ -173,6 +173,7 @@ void test_rfc8259_all_whitespace_between_tokens(void);
 void test_control_char_tab_in_string_value(void);
 void test_control_char_lf_in_string_value(void);
 void test_quoted_string_spoofing(void);
+void test_utf8_overlong_nul_c0_80(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1003,6 +1004,55 @@ void test_utf8_invalid_truncated(void)
     assert(result == OKJ_ERROR_BAD_STRING);
 
     printf("test_utf8_invalid_truncated passed!\n");
+}
+
+void test_utf8_overlong_nul_c0_80(void)
+{
+    /* Modified UTF-8 / overlong NUL attack: the two-byte sequence 0xC0 0x80
+     * mathematically encodes U+0000 (NUL) but evades single-byte '\0' guards.
+     *
+     * Proof that okj_validate_utf8_sequence rejects it:
+     *
+     *   b0 = 0xC0 = 192
+     *
+     *   Step 1 – ASCII gate (line: b0 <= 0x7FU):
+     *     0xC0 <= 0x7F  =>  192 <= 127  =>  FALSE
+     *     Not handled as a single-byte ASCII character.
+     *
+     *   Step 2 – 2-byte leader gate (b0 >= 0xC2U && b0 <= 0xDFU):
+     *     0xC0 >= 0xC2  =>  192 >= 194  =>  FALSE
+     *     The range [0xC2, 0xDF] deliberately excludes 0xC0 and 0xC1 because
+     *     any sequence starting with those bytes would be an overlong encoding
+     *     of a code point that fits in fewer bits (U+0000–U+007F for 0xC0,
+     *     U+0040–U+007F for 0xC1).  RFC 3629 §3 forbids such encodings.
+     *
+     *   Step 3 – All remaining branches test b0 against 0xE0, 0xE1-0xEC,
+     *     0xED, 0xEE-0xEF, 0xF0, 0xF1-0xF3, 0xF4 – none match 0xC0.
+     *
+     *   Step 4 – Fall-through return 0U: sequence is invalid.
+     *     The string-parse loop maps this to OKJ_ERROR_BAD_STRING.
+     *
+     * This confirms the parser cannot be tricked into treating 0xC0 0x80 as a
+     * valid continuation sequence or as a premature string terminator. */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Build {"s":"\xC0\x80"} – use explicit array so the compiler does not
+     * interpret 0xC0 0x80 as a multi-byte character constant. */
+    char json_str[] = {
+        '{', '"', 's', '"', ':', '"',
+        (char)0xC0, (char)0x80,   /* Modified UTF-8 overlong NUL (U+0000) */
+        '"', '}',
+        '\0'                       /* C-string terminator for okj_init */
+    };
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_BAD_STRING);
+
+    printf("test_utf8_overlong_nul_c0_80 passed!\n");
 }
 
 /* ==================================================================
@@ -4259,6 +4309,9 @@ int main(int argc, char* argv[])
 
     /* okj_skip_string() robustness: structural chars inside quoted strings */
     test_quoted_string_spoofing();
+
+    /* Modified UTF-8 overlong NUL (0xC0 0x80) attack vector */
+    test_utf8_overlong_nul_c0_80();
 
     printf("All OK_JSON tests passed!\n");
 

@@ -1102,6 +1102,12 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
 {
     uint16_t i       = 0U;
     uint16_t key_len = 0U;
+    uint16_t result  = OKJ_MAX_TOKENS;
+
+    if (parser == NULL || key == NULL)
+    {
+        return OKJ_ERROR_BAD_POINTER;
+    }
 
     while ((key[key_len] != '\0') && (key_len <= OKJ_MAX_STRING_LEN))
     {
@@ -1116,11 +1122,12 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
             (t->length == key_len)    &&
             (okj_match(t->start, key, key_len)))
         {
-            return i + 1U;
+            result = i + 1U;
+            break;
         }
     }
 
-    return OKJ_MAX_TOKENS;
+    return result;
 }
 
 /* ---------------------------------------------------------------------------

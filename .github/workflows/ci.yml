@@ -41,7 +41,7 @@ jobs:
           
           # Temporarily disable 'exit on error' so we can safely close the markdown block
           set +e
-          OUTPUT=$(cppcheck --addon=misra.json --enable=all --error-exitcode=0 --inline-suppr src/ 2>&1)
+          OUTPUT=$(cppcheck --addon=misra.json --enable=all --error-exitcode=0 --suppress=unusedFunction --inline-suppr src/ 2>&1)
           EXIT_CODE=$?
           set -e
           

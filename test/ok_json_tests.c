@@ -169,6 +169,7 @@ void test_null_byte_in_string_value(void);
 void test_duplicate_key_first_match_wins(void);
 void test_empty_string_key(void);
 void test_number_large_near_json_limit(void);
+void test_rfc8259_all_whitespace_between_tokens(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3930,6 +3931,49 @@ void test_number_large_near_json_limit(void)
     printf("test_number_large_near_json_limit passed!\n");
 }
 
+void test_rfc8259_all_whitespace_between_tokens(void)
+{
+    /* RFC 8259 §2 defines exactly four insignificant whitespace characters:
+     * Space (0x20), Horizontal Tab (0x09), Line Feed (0x0A), and Carriage
+     * Return (0x0D).  This test inserts every one of those characters, in
+     * all four positions, aggressively between every single token of an
+     * array to prove that okj_skip_whitespace() handles consecutive CR, LF,
+     * Tab, and Space sequences without looping incorrectly or
+     * miscalculating a token start.
+     *
+     * The payload (shown with escape sequences for clarity) is:
+     *
+     *   \r\n\t [\r\n\t 1\r\n\t ,\r\n\t 2\r\n\t ,\r\n\t 3\r\n\t ]\r\n\t
+     *
+     * Every inter-token gap contains CR + LF + Tab + Space in that order,
+     * cycling through all four RFC 8259 whitespace code points.
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    /* Use a char array literal so the escape sequences are baked in by the
+     * compiler.  The leading and trailing whitespace clusters exercise the
+     * pre-value skip and the post-value trailing-whitespace acceptance path
+     * in okj_parse(). */
+    char json_str[] =
+        "\r\n\t [\r\n\t 1\r\n\t ,\r\n\t 2\r\n\t ,\r\n\t 3\r\n\t ]\r\n\t ";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    /* The JSON is syntactically valid so the parser must accept it. */
+    assert(result == OKJ_SUCCESS);
+
+    /* One array + three number elements = four tokens total. */
+    assert(okj_count_elements(&parser) == 4U);
+
+    /* Exactly one array token was produced. */
+    assert(okj_count_arrays(&parser) == 1U);
+
+    printf("test_rfc8259_all_whitespace_between_tokens passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4077,6 +4121,9 @@ int main(int argc, char* argv[])
     test_duplicate_key_first_match_wins();
     test_empty_string_key();
     test_number_large_near_json_limit();
+
+    /* RFC 8259 whitespace compliance */
+    test_rfc8259_all_whitespace_between_tokens();
 
     printf("All OK_JSON tests passed!\n");
 

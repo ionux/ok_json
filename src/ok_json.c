@@ -1127,7 +1127,7 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
 
         for (i = 0U; (i + 1U) < parser->token_count; i++)
         {
-            OkJsonToken *t = &parser->tokens[i];
+            const OkJsonToken *t = &parser->tokens[i];
 
             if ((t->type   == OKJ_STRING) &&
                 (t->length == key_len)    &&
@@ -1344,7 +1344,7 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
     return copy_len;
 }
 
-uint16_t okj_count_objects(OkJsonParser *parser)
+uint16_t okj_count_objects(const OkJsonParser *parser)
 {
     uint16_t count = 0U;
 
@@ -1364,7 +1364,7 @@ uint16_t okj_count_objects(OkJsonParser *parser)
     return count;
 }
 
-uint16_t okj_count_arrays(OkJsonParser *parser)
+uint16_t okj_count_arrays(const OkJsonParser *parser)
 {
     uint16_t count = 0U;
 
@@ -1384,7 +1384,7 @@ uint16_t okj_count_arrays(OkJsonParser *parser)
     return count;
 }
 
-uint16_t okj_count_elements(OkJsonParser *parser)
+uint16_t okj_count_elements(const OkJsonParser *parser)
 {
     uint16_t result = 0U;
 
@@ -1438,9 +1438,9 @@ void okj_debug_print(OkJsonParser *parser)
 
     for (i = 0U; i < parser->token_count; i++)
     {
-        OkJsonToken *t    = &parser->tokens[i];
-        uint16_t     dlen = t->length;
-        uint16_t     j;
+        const OkJsonToken *t = &parser->tokens[i];
+
+        uint16_t dlen = t->length;
 
         if ((t->type == OKJ_OBJECT) || (t->type == OKJ_ARRAY))
         {
@@ -1454,6 +1454,8 @@ void okj_debug_print(OkJsonParser *parser)
 
         if (t->start != NULL)
         {
+            uint16_t j;
+
             for (j = 0U; j < dlen; j++)
             {
                 if (t->start[j] == '\0')

@@ -496,7 +496,7 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 {
     if (parser != NULL)
     {
-        while (okj_is_whitespace(parser->json[parser->position]))
+        while (okj_is_whitespace(parser->json[parser->position]) == 1U)
         {
             parser->position++;
         }
@@ -939,7 +939,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             result = OKJ_ERROR_BAD_NUMBER;
         }
     }
-    else if (okj_match(&parser->json[parser->position], "true", 4U))
+    else if (okj_match(&parser->json[parser->position], "true", 4U) == 1U)
     {
         /* Keyword literals are only valid in value positions. */
         if ((parser->context != OKJ_CTX_WANT_VALUE) &&
@@ -968,7 +968,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
         }
     }
-    else if (okj_match(&parser->json[parser->position], "false", 5U))
+    else if (okj_match(&parser->json[parser->position], "false", 5U) == 1U)
     {
         if ((parser->context != OKJ_CTX_WANT_VALUE) &&
             (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
@@ -995,7 +995,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             parser->context = OKJ_CTX_WANT_SEP_OR_CLOSE;
         }
     }
-    else if (okj_match(&parser->json[parser->position], "null", 4U))
+    else if (okj_match(&parser->json[parser->position], "null", 4U) == 1U)
     {
         if ((parser->context != OKJ_CTX_WANT_VALUE) &&
             (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))

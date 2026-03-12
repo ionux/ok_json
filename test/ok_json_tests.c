@@ -174,6 +174,10 @@ void test_control_char_tab_in_string_value(void);
 void test_control_char_lf_in_string_value(void);
 void test_quoted_string_spoofing(void);
 void test_utf8_overlong_nul_c0_80(void);
+void test_backslash_flood_at_limit(void);
+void test_backslash_flood_one_over(void);
+void test_backslash_straddle_limit(void);
+void test_backslash_truncated_at_boundary(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -1053,6 +1057,218 @@ void test_utf8_overlong_nul_c0_80(void)
     assert(result == OKJ_ERROR_BAD_STRING);
 
     printf("test_utf8_overlong_nul_c0_80 passed!\n");
+}
+
+void test_backslash_flood_at_limit(void)
+{
+    /* A string value consisting entirely of escaped backslashes (\\), with
+     * exactly OKJ_MAX_STRING_LEN (64) raw bytes of content.  The 64 raw bytes
+     * are 32 '\\' pairs, each representing one literal backslash.
+     *
+     * This is the maximal valid all-backslash string; the parser must accept
+     * it and report tok->length == 64.
+     *
+     * Buffer layout: {"k":"<32 x \\>"}
+     *   '{'        =  1
+     *   '"k"'      =  3
+     *   ':'        =  1
+     *   '"'        =  1   opening quote
+     *   64 x '\'   = 64   (32 escape pairs)
+     *   '"'        =  1   closing quote
+     *   '}'        =  1
+     *   '\0'       =  1
+     *   Total      = 73 bytes
+     */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    OkJsonString *str;
+    char          json_str[73];
+    uint16_t      i;
+    uint16_t      pos = 0U;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'k';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 32U; i++)   /* 32 pairs = 64 raw bytes */
+    {
+        json_str[pos++] = '\\';
+        json_str[pos++] = '\\';
+    }
+
+    json_str[pos++] = '"';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "k");
+    assert(str != NULL);
+    assert(str->length == 64U);
+
+    printf("test_backslash_flood_at_limit passed!\n");
+}
+
+void test_backslash_flood_one_over(void)
+{
+    /* A string value of 33 '\\' pairs = 66 raw bytes, two beyond
+     * OKJ_MAX_STRING_LEN.  The length-limit check at the top of the parse
+     * loop must catch this and return OKJ_ERROR_MAX_STR_LEN_EXCEEDED.
+     *
+     * Buffer layout: {"k":"<33 x \\>"}
+     *   '{'        =  1
+     *   '"k"'      =  3
+     *   ':'        =  1
+     *   '"'        =  1
+     *   66 x '\'   = 66
+     *   '"'        =  1
+     *   '}'        =  1
+     *   '\0'       =  1
+     *   Total      = 75 bytes
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[75];
+    uint16_t     i;
+    uint16_t     pos = 0U;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'k';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 33U; i++)   /* 33 pairs = 66 raw bytes */
+    {
+        json_str[pos++] = '\\';
+        json_str[pos++] = '\\';
+    }
+
+    json_str[pos++] = '"';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
+
+    printf("test_backslash_flood_one_over passed!\n");
+}
+
+void test_backslash_straddle_limit(void)
+{
+    /* Buffer-exhaustion edge case: a '\\' escape sequence whose FIRST byte
+     * lands at relative position 63 (one below the 64-byte ceiling) and
+     * whose SECOND byte therefore lands at position 64 (one past it).
+     *
+     * Without a post-escape length guard the loop's top-of-iteration check
+     * never fires for that second byte; the closing '"' is found immediately
+     * after and the parser would incorrectly return OKJ_SUCCESS with
+     * tok->length == 65.  The correct result is OKJ_ERROR_MAX_STR_LEN_EXCEEDED.
+     *
+     * Buffer layout: {"k":"<63 x 'a'>\\"}
+     *   '{'        =  1
+     *   '"k"'      =  3
+     *   ':'        =  1
+     *   '"'        =  1   opening quote
+     *   63 x 'a'   = 63   fills relative positions 0-62
+     *   '\\'       =  2   escape at relative positions 63-64  <- straddle
+     *   '"'        =  1   closing quote
+     *   '}'        =  1
+     *   '\0'       =  1
+     *   Total      = 74 bytes
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[74];
+    uint16_t     i;
+    uint16_t     pos = 0U;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'k';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 63U; i++)   /* 63 plain bytes → relative positions 0-62 */
+    {
+        json_str[pos++] = 'a';
+    }
+
+    json_str[pos++] = '\\';      /* relative position 63 — first byte of escape  */
+    json_str[pos++] = '\\';      /* relative position 64 — second byte of escape */
+
+    json_str[pos++] = '"';
+    json_str[pos++] = '}';
+    json_str[pos]   = '\0';
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
+
+    printf("test_backslash_straddle_limit passed!\n");
+}
+
+void test_backslash_truncated_at_boundary(void)
+{
+    /* A string value of 31 '\\' pairs (62 raw bytes) followed by a lone
+     * backslash whose escape character is the NUL terminator.  This places
+     * a lone '\' at relative position 62; after the parser consumes it
+     * (advancing to relative 63), it reads '\0' as the escape character
+     * and must break with OKJ_ERROR_UNEXPECTED_END — not read out of bounds.
+     *
+     * Buffer layout: {"k":"<31 x \\>\"}
+     *   '{'        =  1
+     *   '"k"'      =  3
+     *   ':'        =  1
+     *   '"'        =  1   opening quote
+     *   62 x '\'   = 62   (31 escape pairs)
+     *   '\'        =  1   lone backslash at relative position 62
+     *   '\0'       =  1   NUL — acts as the (missing) escape char
+     *   Total      = 70 bytes (no closing '"' or '}')
+     */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[70];
+    uint16_t     i;
+    uint16_t     pos = 0U;
+
+    json_str[pos++] = '{';
+    json_str[pos++] = '"';
+    json_str[pos++] = 'k';
+    json_str[pos++] = '"';
+    json_str[pos++] = ':';
+    json_str[pos++] = '"';
+
+    for (i = 0U; i < 31U; i++)   /* 31 pairs = 62 raw bytes */
+    {
+        json_str[pos++] = '\\';
+        json_str[pos++] = '\\';
+    }
+
+    json_str[pos++] = '\\';      /* lone backslash — escape char is '\0' */
+    json_str[pos]   = '\0';      /* NUL terminator */
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_UNEXPECTED_END);
+
+    printf("test_backslash_truncated_at_boundary passed!\n");
 }
 
 /* ==================================================================
@@ -4312,6 +4528,12 @@ int main(int argc, char* argv[])
 
     /* Modified UTF-8 overlong NUL (0xC0 0x80) attack vector */
     test_utf8_overlong_nul_c0_80();
+
+    /* Backslash-flood / escape-straddling buffer-exhaustion attack vectors */
+    test_backslash_flood_at_limit();
+    test_backslash_flood_one_over();
+    test_backslash_straddle_limit();
+    test_backslash_truncated_at_boundary();
 
     printf("All OK_JSON tests passed!\n");
 

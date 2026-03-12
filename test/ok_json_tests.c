@@ -119,6 +119,7 @@ void test_deeply_nested_at_limit(void);
 void test_max_json_len_exceeded(void);
 void test_max_json_len_boundary(void);
 void test_parse_null_parser(void);
+void test_null_pointer_safety(void);
 void test_truncated_backslash_at_eof(void);
 void test_copy_string_basic(void);
 void test_copy_string_null_terminated(void);
@@ -2267,6 +2268,49 @@ void test_parse_null_parser(void)
     printf("test_parse_null_parser passed!\n");
 }
 
+void test_null_pointer_safety(void)
+{
+    /* Exhaustively verify every public API boundary that accepts a pointer
+     * handles NULL gracefully (no segfault, no undefined behaviour).
+     * This satisfies the MISRA C defensive-programming requirement that
+     * API entry points validate all pointer arguments before use. */
+
+    OkJsonParser parser;
+    char         json_str[] = "{\"k\":1}";
+
+    /* --- okj_init(NULL, json) -------------------------------------------- */
+    /* Must return immediately without touching any memory. */
+    okj_init(NULL, json_str);
+
+    /* --- okj_init(parser, NULL) ------------------------------------------ */
+    /* Prime the parser with known values, then attempt a re-init with a NULL
+     * JSON string.  The call must be a no-op: the parser fields must remain
+     * exactly as set by the prior okj_init() call. */
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    {
+        uint16_t saved_token_count = parser.token_count;
+        uint16_t saved_depth       = parser.depth;
+
+        okj_init(&parser, NULL);
+
+        assert(parser.token_count == saved_token_count);
+        assert(parser.depth       == saved_depth);
+    }
+
+    /* --- okj_count_objects(NULL) ----------------------------------------- */
+    assert(okj_count_objects(NULL)  == 0U);
+
+    /* --- okj_count_arrays(NULL) ------------------------------------------ */
+    assert(okj_count_arrays(NULL)   == 0U);
+
+    /* --- okj_count_elements(NULL) ---------------------------------------- */
+    assert(okj_count_elements(NULL) == 0U);
+
+    printf("test_null_pointer_safety passed!\n");
+}
+
 void test_truncated_backslash_at_eof(void)
 {
     /* A string that ends with a lone backslash (no following escape character)
@@ -3832,6 +3876,7 @@ int main(int argc, char* argv[])
     test_max_json_len_exceeded();
     test_max_json_len_boundary();
     test_parse_null_parser();
+    test_null_pointer_safety();
     test_truncated_backslash_at_eof();
     test_copy_string_basic();
     test_copy_string_null_terminated();

@@ -163,6 +163,7 @@ void test_deeply_nested_valid_json(void);
 void test_upper_limits_json(void);
 void test_null_byte_in_string_value(void);
 void test_duplicate_key_first_match_wins(void);
+void test_empty_string_key(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3627,6 +3628,47 @@ void test_duplicate_key_first_match_wins(void)
     printf("test_duplicate_key_first_match_wins passed!\n");
 }
 
+void test_empty_string_key(void)
+{
+    /* RFC 7159 / RFC 8259 allow "" as a valid object key.  Verify that:
+     *   1. {"": "value"} parses without error.
+     *   2. The key token has length == 0.
+     *   3. okj_get_string(&parser, "") finds the value token correctly.
+     *
+     * This exercises the length == 0 path in okj_find_value_index() and the
+     * zero-iteration loop in okj_match(), both of which must handle the edge
+     * case without infinite-looping or underflowing. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char json_str[] = "{\"\":\"value\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    /* Three tokens: OKJ_OBJECT container, empty-string key, string value. */
+    assert(parser.token_count == 3U);
+    assert(parser.tokens[0].type == OKJ_OBJECT);
+
+    /* Key token must be a zero-length STRING. */
+    assert(parser.tokens[1].type   == OKJ_STRING);
+    assert(parser.tokens[1].length == 0U);
+
+    /* Value lookup via the empty-string key must succeed. */
+    str = okj_get_string(&parser, "");
+    assert(str != NULL);
+
+    /* The value is the 5-character string "value". */
+    assert(str->length    == 5U);
+    assert(str->start[0]  == 'v');
+    assert(str->start[1]  == 'a');
+    assert(str->start[2]  == 'l');
+    assert(str->start[3]  == 'u');
+    assert(str->start[4]  == 'e');
+
+    printf("test_empty_string_key passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -3768,6 +3810,7 @@ int main(int argc, char* argv[])
     test_upper_limits_json();
     test_null_byte_in_string_value();
     test_duplicate_key_first_match_wins();
+    test_empty_string_key();
 
     printf("All OK_JSON tests passed!\n");
 

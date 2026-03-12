@@ -167,6 +167,7 @@ void test_upper_limits_json(void);
 void test_null_byte_in_string_value(void);
 void test_duplicate_key_first_match_wins(void);
 void test_empty_string_key(void);
+void test_number_large_near_json_limit(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -3813,6 +3814,70 @@ void test_empty_string_key(void)
     printf("test_empty_string_key passed!\n");
 }
 
+void test_number_large_near_json_limit(void)
+{
+    /* Prove that the numeric scanner handles a number token that spans
+     * several hundred characters without overflowing any uint16_t length
+     * variable or triggering an out-of-bounds read.
+     *
+     * Layout (total == OKJ_MAX_JSON_LEN == 4096 bytes, which must succeed):
+     *
+     *   {"n": <4089-digit integer>}
+     *   ^----^                    ^
+     *   6 bytes prefix            1 byte suffix
+     *
+     * The number is "1" followed by 4088 '0' characters, giving a
+     * 4089-byte token that is astronomically large but syntactically
+     * valid per RFC 8259 §6. */
+
+    OkJsonParser  parser;
+    OkjError      result;
+    OkJsonNumber *num;
+
+    /* Prefix: {"n":  (6 bytes) + 4089 digit chars + suffix: } (1 byte) +
+     * NUL terminator = 4097 bytes total storage. */
+    char     json_buf[4097];
+    uint16_t pos = 0U;
+    uint16_t i;
+
+    /* Write the object header and key. */
+    json_buf[pos++] = '{';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = 'n';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = ':';
+    json_buf[pos++] = ' ';
+
+    /* Write the number: leading '1' then 4088 trailing zeros. */
+    json_buf[pos++] = '1';
+
+    for (i = 0U; i < 4088U; i++)
+    {
+        json_buf[pos++] = '0';
+    }
+
+    /* Close the object. */
+    json_buf[pos++] = '}';
+    json_buf[pos]   = '\0'; /* pos == 4096 == OKJ_MAX_JSON_LEN */
+
+    okj_init(&parser, json_buf);
+    result = okj_parse(&parser);
+
+    /* The JSON is exactly OKJ_MAX_JSON_LEN bytes and syntactically valid,
+     * so the parser must accept it. */
+    assert(result == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "n");
+
+    /* The number token must be found and its length must equal the full
+     * 4089-character digit sequence without uint16_t truncation. */
+    assert(num != NULL);
+    assert(num->length == 4089U);
+    assert(num->start[0] == '1');
+
+    printf("test_number_large_near_json_limit passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -3958,6 +4023,7 @@ int main(int argc, char* argv[])
     test_null_byte_in_string_value();
     test_duplicate_key_first_match_wins();
     test_empty_string_key();
+    test_number_large_near_json_limit();
 
     printf("All OK_JSON tests passed!\n");
 

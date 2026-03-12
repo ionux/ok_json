@@ -117,6 +117,7 @@ void test_key_exactly_64_chars(void);
 void test_key_65_chars_error(void);
 void test_deeply_nested_at_limit(void);
 void test_max_json_len_exceeded(void);
+void test_max_json_len_boundary(void);
 void test_parse_null_parser(void);
 void test_truncated_backslash_at_eof(void);
 void test_copy_string_basic(void);
@@ -2187,6 +2188,73 @@ void test_max_json_len_exceeded(void)
     printf("test_max_json_len_exceeded passed!\n");
 }
 
+void test_max_json_len_boundary(void)
+{
+    /* Prove the exact boundary of OKJ_MAX_JSON_LEN (4096).
+     *
+     * Sub-test 1: a string of exactly 4096 bytes (the limit) must be accepted
+     *             and return OKJ_SUCCESS.
+     * Sub-test 2: a string of exactly 4097 bytes (one over the limit) must be
+     *             rejected with OKJ_ERROR_MAX_JSON_LEN_EXCEEDED.
+     *
+     * Both strings use the layout: {"x":1} (7 bytes) + N trailing spaces.
+     * Trailing whitespace after a complete top-level object is valid JSON. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_buf[4098]; /* large enough for both sub-tests */
+    uint16_t     i;
+    uint16_t     pos;
+
+    /* --- Sub-test 1: exactly OKJ_MAX_JSON_LEN (4096) bytes must succeed ---
+     * {"x":1} (7 bytes) + 4089 spaces = 4096 bytes, then '\0'. */
+    pos = 0U;
+    json_buf[pos++] = '{';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = 'x';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = ':';
+    json_buf[pos++] = '1';
+    json_buf[pos++] = '}';
+
+    for (i = 0U; i < 4089U; i++)
+    {
+        json_buf[pos++] = ' ';
+    }
+
+    json_buf[pos] = '\0'; /* pos == 4096 == OKJ_MAX_JSON_LEN */
+
+    okj_init(&parser, json_buf);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_SUCCESS);
+
+    /* --- Sub-test 2: exactly OKJ_MAX_JSON_LEN + 1 (4097) bytes must fail ---
+     * {"x":1} (7 bytes) + 4090 spaces = 4097 bytes, then '\0'. */
+    pos = 0U;
+    json_buf[pos++] = '{';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = 'x';
+    json_buf[pos++] = '"';
+    json_buf[pos++] = ':';
+    json_buf[pos++] = '1';
+    json_buf[pos++] = '}';
+
+    for (i = 0U; i < 4090U; i++)
+    {
+        json_buf[pos++] = ' ';
+    }
+
+    json_buf[pos] = '\0'; /* pos == 4097 == OKJ_MAX_JSON_LEN + 1 */
+
+    okj_init(&parser, json_buf);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_JSON_LEN_EXCEEDED);
+
+    printf("test_max_json_len_boundary passed!\n");
+}
+
 void test_parse_null_parser(void)
 {
     /* Passing NULL as the parser pointer must return OKJ_ERROR_BAD_POINTER
@@ -3762,6 +3830,7 @@ int main(int argc, char* argv[])
     test_key_65_chars_error();
     test_deeply_nested_at_limit();
     test_max_json_len_exceeded();
+    test_max_json_len_boundary();
     test_parse_null_parser();
     test_truncated_backslash_at_eof();
     test_copy_string_basic();

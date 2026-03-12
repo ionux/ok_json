@@ -2,10 +2,11 @@
 
 ## Description
 
-Simple, light, clean, and fully RFC 8259-compliant JSON parser suitable for embedded, memory-constrained,
-and safety-critical projects. Written in pure C99 for maximum portability and exhaustively tested.
-Zero external library dependencies (`stdio.h`, `string.h`, and `ctype.h` are
-not used). Designed with safety-critical coding standards (MISRA C:2012) in mind.
+This goals for this project are to be a simple, light, clean, and fully RFC 8259-compliant and
+fully MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and
+safety-critical projects. It is written in pure C99 for maximum portability with no external
+library dependencies.  Test coverage is robust and currently sits above 90% with the goal of
+100% coverage by version 1.0.0 release.
 
 ## Quick Start
 

@@ -360,7 +360,7 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size);
  * @param parser Pointer to the main ok_json parser object
  * @return Count of OKJ_OBJECT tokens, or 0 if @p parser is NULL
  **/
-uint16_t okj_count_objects(OkJsonParser *parser);
+uint16_t okj_count_objects(const OkJsonParser *parser);
 
 /**
  * @brief Return the total number of OKJ_ARRAY tokens in the parsed result.
@@ -369,7 +369,7 @@ uint16_t okj_count_objects(OkJsonParser *parser);
  * @param parser Pointer to the main ok_json parser object
  * @return Count of OKJ_ARRAY tokens, or 0 if @p parser is NULL
  **/
-uint16_t okj_count_arrays(OkJsonParser *parser);
+uint16_t okj_count_arrays(const OkJsonParser *parser);
 
 /**
  * @brief Return the total number of tokens (elements of any type) produced
@@ -377,7 +377,7 @@ uint16_t okj_count_arrays(OkJsonParser *parser);
  * @param parser Pointer to the main ok_json parser object
  * @return Total token count, or 0 if @p parser is NULL
  **/
-uint16_t okj_count_elements(OkJsonParser *parser);
+uint16_t okj_count_elements(const OkJsonParser *parser);
 
 /**
  * @brief Print a human-readable debug dump of every token in @p parser to

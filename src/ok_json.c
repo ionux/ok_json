@@ -1109,7 +1109,7 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
     uint16_t key_len = 0U;
     uint16_t result  = OKJ_MAX_TOKENS;
 
-    if (parser == NULL || key == NULL)
+    if ((parser == NULL) || (key == NULL))
     {
         return OKJ_ERROR_BAD_POINTER;
     }

@@ -1118,26 +1118,24 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
     uint16_t key_len = 0U;
     uint16_t result  = OKJ_MAX_TOKENS;
 
-    if ((parser == NULL) || (key == NULL))
+    if ((parser != NULL) && (key != NULL))
     {
-        return OKJ_ERROR_BAD_POINTER;
-    }
-
-    while ((key[key_len] != '\0') && (key_len <= OKJ_MAX_STRING_LEN))
-    {
-        key_len++;
-    }
-
-    for (i = 0U; (i + 1U) < parser->token_count; i++)
-    {
-        OkJsonToken *t = &parser->tokens[i];
-
-        if ((t->type   == OKJ_STRING) &&
-            (t->length == key_len)    &&
-            (okj_match(t->start, key, key_len)))
+        while ((key[key_len] != '\0') && (key_len <= OKJ_MAX_STRING_LEN))
         {
-            result = i + 1U;
-            break;
+            key_len++;
+        }
+
+        for (i = 0U; (i + 1U) < parser->token_count; i++)
+        {
+            OkJsonToken *t = &parser->tokens[i];
+
+            if ((t->type   == OKJ_STRING) &&
+                (t->length == key_len)    &&
+                (okj_match(t->start, key, key_len)))
+            {
+                result = i + 1U;
+                break;
+            }
         }
     }
 
@@ -1340,25 +1338,23 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
     uint16_t copy_len = 0U;
     uint16_t i        = 0U;
 
-    if ((str == NULL) || (buf == NULL) || (buf_size == 0U))
+    if ((str != NULL) && (buf != NULL) && (buf_size != 0U))
     {
-        return 0U;
+        /* Copy at most (buf_size - 1) bytes to leave room for the null terminator. */
+        copy_len = str->length;
+
+        if (copy_len >= buf_size)
+        {
+            copy_len = (uint16_t)(buf_size - 1U);
+        }
+
+        for (i = 0U; i < copy_len; i++)
+        {
+            buf[i] = str->start[i];
+        }
+
+        buf[copy_len] = '\0';
     }
-
-    /* Copy at most (buf_size - 1) bytes to leave room for the null terminator. */
-    copy_len = str->length;
-
-    if (copy_len >= buf_size)
-    {
-        copy_len = (uint16_t)(buf_size - 1U);
-    }
-
-    for (i = 0U; i < copy_len; i++)
-    {
-        buf[i] = str->start[i];
-    }
-
-    buf[copy_len] = '\0';
 
     return copy_len;
 }
@@ -1403,12 +1399,14 @@ uint16_t okj_count_arrays(OkJsonParser *parser)
 
 uint16_t okj_count_elements(OkJsonParser *parser)
 {
-    if (parser == NULL)
+    uint16_t result = 0U;
+
+    if (parser != NULL)
     {
-        return 0U;
+        result = parser->token_count;
     }
 
-    return parser->token_count;
+    return result;
 }
 
 /* ---------------------------------------------------------------------------

@@ -1413,9 +1413,15 @@ uint16_t okj_count_elements(const OkJsonParser *parser)
 /* ---------------------------------------------------------------------------
  * Debug print — only compiled when OK_JSON_DEBUG is defined
  * ---------------------------------------------------------------------------*/
-
 #ifdef OK_JSON_DEBUG
 
+/**
+ * Suppressing the following include line due to it being part of the conditional
+ * debug build code and used only for development/debugging purposes.  DO NOT USE
+ * THIS DEBUG SECTION IN YOUR PRODUCTION CODE!
+ */
+
+/* cppcheck-suppress misra-c2012-20.1 */
 #include <stdio.h>
 
 static const char *okj_type_name(OkJsonType t)

@@ -182,6 +182,20 @@ void test_okj_match_null_src_and_lit(void);
 void test_validate_utf8_null_src_and_advance(void);
 void test_okj_get_number_null_parser(void);
 void test_okj_get_number_null_key(void);
+void test_okj_get_string_null_parser(void);
+void test_okj_get_string_null_key(void);
+void test_okj_get_boolean_null_parser(void);
+void test_okj_get_boolean_null_key(void);
+void test_okj_get_array_null_parser(void);
+void test_okj_get_array_null_key(void);
+void test_okj_get_object_null_parser(void);
+void test_okj_get_object_null_key(void);
+void test_okj_get_token_null_parser(void);
+void test_okj_get_token_null_key(void);
+void test_okj_get_array_raw_null_parser(void);
+void test_okj_get_array_raw_null_key(void);
+void test_okj_get_object_raw_null_parser(void);
+void test_okj_get_object_raw_null_key(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4497,6 +4511,223 @@ void test_okj_get_number_null_key(void)
     printf("test_okj_get_number_null_key passed!\n");
 }
 
+void test_okj_get_string_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonString *str = okj_get_string(NULL, "name");
+
+    assert(str == NULL);
+
+    printf("test_okj_get_string_null_parser passed!\n");
+}
+
+void test_okj_get_string_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          json_str[] = "{\"name\": \"Alice\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, NULL);
+
+    assert(str == NULL);
+
+    printf("test_okj_get_string_null_key passed!\n");
+}
+
+void test_okj_get_boolean_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonBoolean *flag = okj_get_boolean(NULL, "active");
+
+    assert(flag == NULL);
+
+    printf("test_okj_get_boolean_null_parser passed!\n");
+}
+
+void test_okj_get_boolean_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser   parser;
+    OkJsonBoolean *flag;
+    char           json_str[] = "{\"active\": true}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    flag = okj_get_boolean(&parser, NULL);
+
+    assert(flag == NULL);
+
+    printf("test_okj_get_boolean_null_key passed!\n");
+}
+
+void test_okj_get_array_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonArray *arr = okj_get_array(NULL, "items");
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_null_parser passed!\n");
+}
+
+void test_okj_get_array_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonArray  *arr;
+    char          json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array(&parser, NULL);
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_null_key passed!\n");
+}
+
+void test_okj_get_object_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonObject *obj = okj_get_object(NULL, "info");
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_null_parser passed!\n");
+}
+
+void test_okj_get_object_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char          json_str[] = "{\"info\": {\"x\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object(&parser, NULL);
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_null_key passed!\n");
+}
+
+void test_okj_get_token_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonToken *tok = okj_get_token(NULL, "key");
+
+    assert(tok == NULL);
+
+    printf("test_okj_get_token_null_parser passed!\n");
+}
+
+void test_okj_get_token_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonToken  *tok;
+    char          json_str[] = "{\"key\": 42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    tok = okj_get_token(&parser, NULL);
+
+    assert(tok == NULL);
+
+    printf("test_okj_get_token_null_key passed!\n");
+}
+
+void test_okj_get_array_raw_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonArray *arr = okj_get_array_raw(NULL, "items");
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_raw_null_parser passed!\n");
+}
+
+void test_okj_get_array_raw_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonArray  *arr;
+    char          json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array_raw(&parser, NULL);
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_raw_null_key passed!\n");
+}
+
+void test_okj_get_object_raw_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonObject *obj = okj_get_object_raw(NULL, "info");
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_raw_null_parser passed!\n");
+}
+
+void test_okj_get_object_raw_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char          json_str[] = "{\"info\": {\"x\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object_raw(&parser, NULL);
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_raw_null_key passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4673,6 +4904,22 @@ int main(int argc, char* argv[])
     /* okj_get_number() NULL parser and key parameter guard */
     test_okj_get_number_null_parser();
     test_okj_get_number_null_key();
+
+    /* NULL parser and key parameter guards for all remaining getters */
+    test_okj_get_string_null_parser();
+    test_okj_get_string_null_key();
+    test_okj_get_boolean_null_parser();
+    test_okj_get_boolean_null_key();
+    test_okj_get_array_null_parser();
+    test_okj_get_array_null_key();
+    test_okj_get_object_null_parser();
+    test_okj_get_object_null_key();
+    test_okj_get_token_null_parser();
+    test_okj_get_token_null_key();
+    test_okj_get_array_raw_null_parser();
+    test_okj_get_array_raw_null_key();
+    test_okj_get_object_raw_null_parser();
+    test_okj_get_object_raw_null_key();
 
     printf("All OK_JSON tests passed!\n");
 

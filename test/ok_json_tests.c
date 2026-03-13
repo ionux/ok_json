@@ -24,7 +24,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  **********************************************************************************/
 
-#include "../include/ok_json.h"
+/* Include the implementation directly so all static helpers are visible
+ * within this translation unit.  This is the Unity/Ceedling pattern: the
+ * test file and the implementation are compiled as one unit, giving the
+ * tests full access to static functions and enabling accurate branch
+ * coverage with gcov/gcovr without any indirection. */
+#include "../src/ok_json.c"
 
 #include <stdio.h>
 #include <assert.h>
@@ -205,6 +210,11 @@ void test_okj_get_object_key_not_found(void);
 void test_okj_get_token_key_not_found(void);
 void test_okj_get_array_raw_key_not_found(void);
 void test_okj_get_object_raw_key_not_found(void);
+/* Direct null-guard tests for internal static helpers */
+void test_static_count_array_null_guard(void);
+void test_static_count_object_null_guard(void);
+void test_static_measure_container_null_guard(void);
+void test_static_skip_whitespace_null_guard(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4397,96 +4407,74 @@ void test_quoted_string_spoofing(void)
 
 void test_okj_match_null_src_and_lit(void)
 {
-    /* okj_match() guards against NULL src and lit by immediately returning 0.
-     * Because okj_match() is a static helper it cannot be called directly;
-     * both NULL branches are exercised indirectly:
-     *
-     * NULL src: We hand-craft an OkJsonParser whose STRING token has a NULL
-     *           start pointer, then call okj_get_string().  The lookup path
-     *           okj_get_string() -> okj_find_value_index() ->
-     *           okj_match(NULL, key, len) must return 0 (no match) without
-     *           crashing, causing the getter to return NULL.
-     *
-     * NULL lit: All callers of okj_match() inside ok_json.c either pass a
-     *           string-literal keyword ("true"/"false"/"null") or the key
-     *           argument, which is guarded by okj_find_value_index()'s own
-     *           NULL check.  Passing NULL as the key to okj_get_string() is
-     *           therefore caught at the public-API boundary before okj_match()
-     *           is ever reached, and the function returns NULL gracefully. */
+    /* ok_json.c is included directly as a single translation unit, so the
+     * static okj_match() function is visible here.  Both NULL-guard branches
+     * are exercised with direct calls — no indirection required. */
 
-    OkJsonParser  parser = {0};
-    OkJsonString *result;
+    /* NULL src: must return 0 immediately without dereferencing src. */
+    assert(okj_match(NULL, "test", 4U) == 0U);
 
-    /* Hand-craft a parser state with a STRING token whose start is NULL.
-     * token_count == 2 causes okj_find_value_index() to iterate once (i == 0).
-     * The token passes the type and length checks (OKJ_STRING, length == 1),
-     * so okj_match(NULL, "x", 1U) is called, triggering the src-NULL guard
-     * which returns 0, meaning the match fails and the getter returns NULL. */
-    parser.token_count      = 2U;
-    parser.tokens[0].type   = OKJ_STRING;
-    parser.tokens[0].start  = NULL;
-    parser.tokens[0].length = 1U;  /* same length as the lookup key "x" */
-
-    /* NULL src: okj_match(NULL, "x", 1) -> 0; getter must return NULL. */
-    result = okj_get_string(&parser, "x");
-    assert(result == NULL);
-
-    /* NULL lit: okj_get_string() rejects a NULL key before reaching
-     * okj_match(), so the result is NULL without touching okj_match(). */
-    result = okj_get_string(&parser, NULL);
-    assert(result == NULL);
+    /* NULL lit: must return 0 immediately without dereferencing lit. */
+    assert(okj_match("test", NULL, 4U) == 0U);
 
     printf("test_okj_match_null_src_and_lit passed!\n");
 }
 
 void test_validate_utf8_null_src_and_advance(void)
 {
-    /* okj_validate_utf8_sequence() guards against NULL src and NULL advance
-     * by immediately returning 0.  Because the function is a static helper it
-     * cannot be called directly; this test exercises both NULL branches
-     * indirectly and documents why each guard is unreachable via the public
-     * API:
-     *
-     * NULL src:     src is always parser->json.  okj_parse() dereferences
-     *               parser->json unconditionally before any string scanning
-     *               begins (to measure the JSON length), so a NULL json
-     *               pointer would fault at the call-site before
-     *               okj_validate_utf8_sequence() is ever reached.  The guard
-     *               is therefore a defensive measure for hypothetical future
-     *               direct callers.  We verify here that okj_init() refuses
-     *               to set parser->json when json_string is NULL, leaving
-     *               parser->json as NULL -- a state that must not be passed
-     *               to okj_parse().
-     *
-     * NULL advance: advance is always &utf8_advance, a local variable on the
-     *               stack inside the string-scanning loop.  Its address can
-     *               never be NULL, so the advance guard is likewise a
-     *               defensive measure.  We exercise it indirectly by parsing
-     *               a string that contains a valid 2-byte UTF-8 sequence
-     *               (U+00C9, "É" = 0xC3 0x89); a successful parse proves
-     *               that *advance was written (set to 2) and that the advance
-     *               pointer was therefore not NULL. */
+    /* ok_json.c is included directly as a single translation unit, so the
+     * static okj_validate_utf8_sequence() function is visible here.  Both
+     * NULL-guard branches are exercised with direct calls. */
 
-    OkJsonParser parser   = {0};
-    OkjError     result;
-    char         json_str[] = "{\"k\":\"\xC3\x89\"}";
+    uint16_t adv = 0U;
 
-    /* NULL src: okj_init() with a NULL json_string is a no-op, so
-     * parser.json stays NULL.  We do NOT call okj_parse() here because
-     * okj_parse() dereferences parser->json before reaching any UTF-8
-     * validation; the NULL guard inside okj_validate_utf8_sequence() is
-     * therefore never reachable from okj_parse() when json is NULL. */
-    okj_init(&parser, NULL);
-    assert(parser.json == NULL);
+    /* NULL src: must return 0 immediately without dereferencing src. */
+    assert(okj_validate_utf8_sequence(NULL, 0U, &adv) == 0U);
 
-    /* NULL advance: parse a valid 2-byte UTF-8 sequence.  Success confirms
-     * that okj_validate_utf8_sequence() wrote *advance and did not receive
-     * a NULL advance pointer. */
-    okj_init(&parser, json_str);
-    result = okj_parse(&parser);
-    assert(result == OKJ_SUCCESS);
+    /* NULL advance: must return 0 immediately without dereferencing advance. */
+    assert(okj_validate_utf8_sequence("test", 0U, NULL) == 0U);
 
     printf("test_validate_utf8_null_src_and_advance passed!\n");
+}
+
+void test_static_count_array_null_guard(void)
+{
+    /* okj_count_array_elements() returns 0 when passed NULL or a pointer
+     * that does not begin with '['.  Direct call now that ok_json.c is
+     * included as a single translation unit. */
+    assert(okj_count_array_elements(NULL) == 0U);
+    assert(okj_count_array_elements("not-an-array") == 0U);
+
+    printf("test_static_count_array_null_guard passed!\n");
+}
+
+void test_static_count_object_null_guard(void)
+{
+    /* okj_count_object_members() returns 0 when passed NULL or a pointer
+     * that does not begin with '{'. */
+    assert(okj_count_object_members(NULL) == 0U);
+    assert(okj_count_object_members("not-an-object") == 0U);
+
+    printf("test_static_count_object_null_guard passed!\n");
+}
+
+void test_static_measure_container_null_guard(void)
+{
+    /* okj_measure_container() returns 0 when passed NULL or a pointer that
+     * does not begin with '[' or '{'. */
+    assert(okj_measure_container(NULL) == 0U);
+    assert(okj_measure_container("not-a-container") == 0U);
+
+    printf("test_static_measure_container_null_guard passed!\n");
+}
+
+void test_static_skip_whitespace_null_guard(void)
+{
+    /* okj_skip_whitespace() must be a no-op when passed a NULL parser
+     * pointer — it must not crash or dereference the pointer. */
+    okj_skip_whitespace(NULL);
+
+    printf("test_static_skip_whitespace_null_guard passed!\n");
 }
 
 void test_okj_get_number_null_parser(void)
@@ -5069,6 +5057,12 @@ int main(int argc, char* argv[])
 
     /* okj_validate_utf8_sequence() NULL src and advance parameter guard */
     test_validate_utf8_null_src_and_advance();
+
+    /* Direct null-guard tests for other internal static helpers */
+    test_static_count_array_null_guard();
+    test_static_count_object_null_guard();
+    test_static_measure_container_null_guard();
+    test_static_skip_whitespace_null_guard();
 
     /* okj_get_number() NULL parser and key parameter guard */
     test_okj_get_number_null_parser();

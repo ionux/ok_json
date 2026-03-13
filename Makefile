@@ -1,3 +1,5 @@
+.PHONY: all test coverage clean
+
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic -Iinclude \
          -Wconversion -Wsign-conversion -Wfloat-equal -Wcast-qual \
@@ -8,15 +10,17 @@ CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic -Iinclude \
 SRC = src/ok_json.c
 TEST_SRC = test/ok_json_tests.c
 OBJ = $(SRC:.c=.o)
-TEST_OBJ = $(TEST_SRC:.c=.o)
 
 all: ok_json.a test
 
 ok_json.a: $(OBJ)
 	ar rcs $@ $^
 
-test: ok_json.a $(TEST_OBJ)
-	$(CC) $(CFLAGS) -o test/ok_json_test_runner $(TEST_OBJ) ok_json.a
+# The test file includes src/ok_json.c directly (Unity/Ceedling pattern), so
+# the implementation and tests form a single translation unit.  Link only the
+# test source — no separate object file, no ok_json.a dependency.
+test: $(TEST_SRC) $(SRC)
+	$(CC) $(CFLAGS) -o test/ok_json_test_runner $(TEST_SRC)
 	./test/ok_json_test_runner
 
 coverage: CFLAGS += --coverage
@@ -25,5 +29,5 @@ coverage: clean test
 	gcovr -r .
 
 clean:
-	rm -f $(OBJ) $(TEST_OBJ) ok_json.a test/ok_json_test_runner \
+	rm -f $(OBJ) ok_json.a test/ok_json_test_runner \
 	      *.gcno *.gcda src/*.gcno src/*.gcda test/*.gcno test/*.gcda coverage.xml

@@ -5,7 +5,7 @@
 The goals for this project are to be a simple, light, clean, and RFC 8259-compliant and MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and safety-critical projects. It is written in pure C99 for maximum portability with no external library dependencies.
 
 **Compliance Progress:**
-- Test coverage currently sits at 95% with the goal of 100% coverage by version 1.0.0 release.  Analysis of codebase indicates robust happy path, edge case, security and safety corner case handling with more work to be done, however. 
+- Test coverage currently sits at 98% with the goal of 100% coverage by version 1.0.0 release.  Analysis indicates robust happy path, edge case, security and safety corner case handling. 
 - RFC 8259 and MISRA compliance progress and issues tracked in respective `*_COMPLIANCE` markdown files.  Informal analysis shows strong & significant alignment with both RFC 8259 and MISRA C:2012.
 - Current cppcheck MISRA analysis reports all checked rules passing except Rules 8.9, 15.4, 15.5, 19.1, and 19.2, which are currently suppressed and tracked for future refactoring.
 
@@ -124,7 +124,7 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 
 ## AI Assistance Disclosure
 
-Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc..  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.  AI-generated suggestions were not accepted blindly and should not be interpreted as a substitute for real human engineering judgment, verification, or validation.
+Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc...  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.  AI-generated suggestions were not accepted blindly and should not be interpreted as a substitute for real human engineering judgment, verification, or validation.
 
 ## Contributing
 

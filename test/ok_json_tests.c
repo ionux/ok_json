@@ -180,6 +180,8 @@ void test_backslash_straddle_limit(void);
 void test_backslash_truncated_at_boundary(void);
 void test_okj_match_null_src_and_lit(void);
 void test_validate_utf8_null_src_and_advance(void);
+void test_okj_get_number_null_parser(void);
+void test_okj_get_number_null_key(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4464,6 +4466,37 @@ void test_validate_utf8_null_src_and_advance(void)
     printf("test_validate_utf8_null_src_and_advance passed!\n");
 }
 
+void test_okj_get_number_null_parser(void)
+{
+    /* Passing NULL as the parser pointer must return NULL immediately
+     * without dereferencing any memory. */
+
+    OkJsonNumber *num = okj_get_number(NULL, "age");
+
+    assert(num == NULL);
+
+    printf("test_okj_get_number_null_parser passed!\n");
+}
+
+void test_okj_get_number_null_key(void)
+{
+    /* Passing NULL as the key pointer must return NULL immediately
+     * without scanning the token array. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char          json_str[] = "{\"age\": 30}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, NULL);
+
+    assert(num == NULL);
+
+    printf("test_okj_get_number_null_key passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4636,6 +4669,10 @@ int main(int argc, char* argv[])
 
     /* okj_validate_utf8_sequence() NULL src and advance parameter guard */
     test_validate_utf8_null_src_and_advance();
+
+    /* okj_get_number() NULL parser and key parameter guard */
+    test_okj_get_number_null_parser();
+    test_okj_get_number_null_key();
 
     printf("All OK_JSON tests passed!\n");
 

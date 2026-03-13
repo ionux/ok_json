@@ -2,11 +2,12 @@
 
 ## Description
 
-This goals for this project are to be a simple, light, clean, and fully RFC 8259-compliant and
-fully MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and
-safety-critical projects. It is written in pure C99 for maximum portability with no external
-library dependencies.  Test coverage is robust and currently sits above 90% with the goal of
-100% coverage by version 1.0.0 release.
+The goals for this project are to be a simple, light, clean, and RFC 8259-compliant and MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and safety-critical projects. It is written in pure C99 for maximum portability with no external library dependencies.
+
+**Compliance Progress:**
+- Test coverage currently sits at 95% with the goal of 100% coverage by version 1.0.0 release.  Analysis of codebase indicates robust happy path, edge case, security and safety corner case handling with more work to be done, however. 
+- RFC 8259 and MISRA compliance progress and issues tracked in respective `*_COMPLIANCE` markdown files.  Informal analysis shows strong & significant alignment with both RFC 8259 and MISRA C:2012.
+- Current cppcheck MISRA analysis reports all checked rules passing except Rules 8.9, 15.4, 15.5, 19.1, and 19.2, which are currently suppressed and tracked for future refactoring.
 
 ## Quick Start
 
@@ -118,7 +119,8 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 ## Known Issues
 
 - This code is currently not thread safe.  Do not use in a multithreaded context until the 1.0.0 release corrects this.
-- Not fully compliant with MISRA C:2012 yet.  Will be compliant by the 1.0.0 release, however.
+- Does not have complete test coverage.  Will be complete by the 1.0.0 release.
+- Not passing all MISRA C:2012 rule checks yet (using `cppcheck`).  All checks will be passing by the 1.0.0 release.
 
 ## AI Assistance Disclosure
 

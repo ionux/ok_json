@@ -196,6 +196,15 @@ void test_okj_get_array_raw_null_parser(void);
 void test_okj_get_array_raw_null_key(void);
 void test_okj_get_object_raw_null_parser(void);
 void test_okj_get_object_raw_null_key(void);
+/* Nonexistent key guards for all getters */
+void test_okj_get_string_key_not_found(void);
+void test_okj_get_number_key_not_found(void);
+void test_okj_get_boolean_key_not_found(void);
+void test_okj_get_array_key_not_found(void);
+void test_okj_get_object_key_not_found(void);
+void test_okj_get_token_key_not_found(void);
+void test_okj_get_array_raw_key_not_found(void);
+void test_okj_get_object_raw_key_not_found(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4728,6 +4737,166 @@ void test_okj_get_object_raw_null_key(void)
     printf("test_okj_get_object_raw_null_key passed!\n");
 }
 
+void test_okj_get_string_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonString *str;
+    char          json_str[] = "{\"name\": \"Alice\"}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    str = okj_get_string(&parser, "missing");
+
+    assert(str == NULL);
+
+    printf("test_okj_get_string_key_not_found passed!\n");
+}
+
+void test_okj_get_number_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonNumber *num;
+    char          json_str[] = "{\"age\": 30}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    num = okj_get_number(&parser, "missing");
+
+    assert(num == NULL);
+
+    printf("test_okj_get_number_key_not_found passed!\n");
+}
+
+void test_okj_get_boolean_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser   parser;
+    OkJsonBoolean *flag;
+    char           json_str[] = "{\"active\": true}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    flag = okj_get_boolean(&parser, "missing");
+
+    assert(flag == NULL);
+
+    printf("test_okj_get_boolean_key_not_found passed!\n");
+}
+
+void test_okj_get_array_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonArray  *arr;
+    char          json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array(&parser, "missing");
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_key_not_found passed!\n");
+}
+
+void test_okj_get_object_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char          json_str[] = "{\"info\": {\"x\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object(&parser, "missing");
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_key_not_found passed!\n");
+}
+
+void test_okj_get_token_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonToken  *tok;
+    char          json_str[] = "{\"key\": 42}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    tok = okj_get_token(&parser, "missing");
+
+    assert(tok == NULL);
+
+    printf("test_okj_get_token_key_not_found passed!\n");
+}
+
+void test_okj_get_array_raw_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonArray  *arr;
+    char          json_str[] = "{\"items\": [1, 2, 3]}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    arr = okj_get_array_raw(&parser, "missing");
+
+    assert(arr == NULL);
+
+    printf("test_okj_get_array_raw_key_not_found passed!\n");
+}
+
+void test_okj_get_object_raw_key_not_found(void)
+{
+    /* A valid parser with a parsed object, but the requested key does not
+     * exist.  okj_find_value_index() returns OKJ_MAX_TOKENS and the getter
+     * must propagate that as NULL. */
+
+    OkJsonParser  parser;
+    OkJsonObject *obj;
+    char          json_str[] = "{\"info\": {\"x\": 1}}";
+
+    okj_init(&parser, json_str);
+    assert(okj_parse(&parser) == OKJ_SUCCESS);
+
+    obj = okj_get_object_raw(&parser, "missing");
+
+    assert(obj == NULL);
+
+    printf("test_okj_get_object_raw_key_not_found passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4920,6 +5089,16 @@ int main(int argc, char* argv[])
     test_okj_get_array_raw_null_key();
     test_okj_get_object_raw_null_parser();
     test_okj_get_object_raw_null_key();
+
+    /* Nonexistent key guards: valid parser, valid JSON, key absent */
+    test_okj_get_string_key_not_found();
+    test_okj_get_number_key_not_found();
+    test_okj_get_boolean_key_not_found();
+    test_okj_get_array_key_not_found();
+    test_okj_get_object_key_not_found();
+    test_okj_get_token_key_not_found();
+    test_okj_get_array_raw_key_not_found();
+    test_okj_get_object_raw_key_not_found();
 
     printf("All OK_JSON tests passed!\n");
 

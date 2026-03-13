@@ -3,7 +3,7 @@
 **Project:** `ok_json`  
 **Language:** C99  
 **Target Standard:** MISRA C:2012  
-**Assessment Basis:** `cppcheck` MISRA analysis results
+**Assessment Basis:** `cppcheck` MISRA analysis results  
 **Purpose:** Project compliance tracking and repository transparency
 
 ---

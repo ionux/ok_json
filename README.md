@@ -104,11 +104,6 @@ Requires a C99-capable compiler. Tested with GCC using
 dimensions in struct definitions). The remaining limits are `static const`
 values defined in the header. All can be overridden at compile time.
 
-## Known Issues
-
-- This code is currently not thread safe.  Do not use in a multithreaded context until the 1.0.0 release corrects this.
-- Not fully compliant with MISRA C:2012 yet.  Will be compliant by the 1.0.0 release, however.
-
 ## Wiki
 
 A full local wiki is available in the [`wiki/`](wiki/) directory:
@@ -119,6 +114,15 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 - [API Reference](wiki/API-Reference.md)
 - [Usage Guide](wiki/Usage-Guide.md)
 - [Development and Testing](wiki/Development-and-Testing.md)
+
+## Known Issues
+
+- This code is currently not thread safe.  Do not use in a multithreaded context until the 1.0.0 release corrects this.
+- Not fully compliant with MISRA C:2012 yet.  Will be compliant by the 1.0.0 release, however.
+
+## AI Assistance Disclosure
+
+Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc..  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.  AI-generated suggestions were not accepted blindly and should not be interpreted as a substitute for real human engineering judgment, verification, or validation.
 
 ## Contributing
 

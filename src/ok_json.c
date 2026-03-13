@@ -1422,6 +1422,7 @@ uint16_t okj_count_elements(const OkJsonParser *parser)
  */
 
 /* cppcheck-suppress misra-c2012-20.1 */
+/* cppcheck-suppress misra-c2012-21.6 */
 #include <stdio.h>
 
 static const char *okj_type_name(OkJsonType t)

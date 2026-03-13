@@ -179,6 +179,7 @@ void test_backslash_flood_one_over(void);
 void test_backslash_straddle_limit(void);
 void test_backslash_truncated_at_boundary(void);
 void test_okj_match_null_src_and_lit(void);
+void test_validate_utf8_null_src_and_advance(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4413,6 +4414,56 @@ void test_okj_match_null_src_and_lit(void)
     printf("test_okj_match_null_src_and_lit passed!\n");
 }
 
+void test_validate_utf8_null_src_and_advance(void)
+{
+    /* okj_validate_utf8_sequence() guards against NULL src and NULL advance
+     * by immediately returning 0.  Because the function is a static helper it
+     * cannot be called directly; this test exercises both NULL branches
+     * indirectly and documents why each guard is unreachable via the public
+     * API:
+     *
+     * NULL src:     src is always parser->json.  okj_parse() dereferences
+     *               parser->json unconditionally before any string scanning
+     *               begins (to measure the JSON length), so a NULL json
+     *               pointer would fault at the call-site before
+     *               okj_validate_utf8_sequence() is ever reached.  The guard
+     *               is therefore a defensive measure for hypothetical future
+     *               direct callers.  We verify here that okj_init() refuses
+     *               to set parser->json when json_string is NULL, leaving
+     *               parser->json as NULL -- a state that must not be passed
+     *               to okj_parse().
+     *
+     * NULL advance: advance is always &utf8_advance, a local variable on the
+     *               stack inside the string-scanning loop.  Its address can
+     *               never be NULL, so the advance guard is likewise a
+     *               defensive measure.  We exercise it indirectly by parsing
+     *               a string that contains a valid 2-byte UTF-8 sequence
+     *               (U+00C9, "É" = 0xC3 0x89); a successful parse proves
+     *               that *advance was written (set to 2) and that the advance
+     *               pointer was therefore not NULL. */
+
+    OkJsonParser parser   = {0};
+    OkjError     result;
+    char         json_str[] = "{\"k\":\"\xC3\x89\"}";
+
+    /* NULL src: okj_init() with a NULL json_string is a no-op, so
+     * parser.json stays NULL.  We do NOT call okj_parse() here because
+     * okj_parse() dereferences parser->json before reaching any UTF-8
+     * validation; the NULL guard inside okj_validate_utf8_sequence() is
+     * therefore never reachable from okj_parse() when json is NULL. */
+    okj_init(&parser, NULL);
+    assert(parser.json == NULL);
+
+    /* NULL advance: parse a valid 2-byte UTF-8 sequence.  Success confirms
+     * that okj_validate_utf8_sequence() wrote *advance and did not receive
+     * a NULL advance pointer. */
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+    assert(result == OKJ_SUCCESS);
+
+    printf("test_validate_utf8_null_src_and_advance passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -4582,6 +4633,9 @@ int main(int argc, char* argv[])
 
     /* okj_match() NULL src and lit parameter guard */
     test_okj_match_null_src_and_lit();
+
+    /* okj_validate_utf8_sequence() NULL src and advance parameter guard */
+    test_validate_utf8_null_src_and_advance();
 
     printf("All OK_JSON tests passed!\n");
 

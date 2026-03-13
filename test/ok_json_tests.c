@@ -215,6 +215,19 @@ void test_static_count_array_null_guard(void);
 void test_static_count_object_null_guard(void);
 void test_static_measure_container_null_guard(void);
 void test_static_skip_whitespace_null_guard(void);
+/* Coverage for previously uncovered branches in ok_json.c */
+void test_skip_string_backslash_escape(void);
+void test_skip_string_backslash_at_eof(void);
+void test_measure_container_escape_in_string(void);
+void test_measure_container_escape_at_eof(void);
+void test_parse_value_null_parser(void);
+void test_open_brace_wrong_context(void);
+void test_open_bracket_wrong_context(void);
+void test_array_max_depth_exceeded(void);
+void test_close_brace_depth_zero(void);
+void test_close_bracket_depth_zero(void);
+void test_comma_outside_container(void);
+void test_false_as_object_key(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -4885,6 +4898,257 @@ void test_okj_get_object_raw_key_not_found(void)
     printf("test_okj_get_object_raw_key_not_found passed!\n");
 }
 
+/* ---------------------------------------------------------------------------
+ * New coverage tests for previously uncovered branches
+ * ---------------------------------------------------------------------------*/
+
+void test_skip_string_backslash_escape(void)
+{
+    /* okj_skip_string() is a static function visible because ok_json.c is
+     * included directly.  Feed it a quoted string that contains a backslash
+     * escape sequence (e.g. \n) so that the backslash-skip branch at line 234
+     * is taken and the NUL check at line 236 evaluates to false. */
+
+    /* Raw bytes: " \ n " NUL  →  \"\\n\" in C notation */
+    char s[] = "\"\\n\"";
+
+    const char *end = okj_skip_string(s);
+
+    /* Should advance past both characters of the escape and the closing quote */
+    assert(*end == '\0');
+
+    printf("test_skip_string_backslash_escape passed!\n");
+}
+
+void test_skip_string_backslash_at_eof(void)
+{
+    /* Feed okj_skip_string() a string that ends with a lone backslash
+     * (no following escape character).  The NUL check at line 236 must
+     * evaluate to true and trigger the break at line 238.
+     *
+     * Raw bytes: "  a  \  NUL  — the string is never closed. */
+    char s[] = {'"', 'a', '\\', '\0'};
+
+    const char *end = okj_skip_string(s);
+
+    /* Scan stops at the NUL after the lone backslash */
+    assert(*end == '\0');
+
+    printf("test_skip_string_backslash_at_eof passed!\n");
+}
+
+void test_measure_container_escape_in_string(void)
+{
+    /* okj_measure_container() is a static function visible via direct include.
+     * Provide an array whose element contains a backslash-escaped character
+     * so that lines 411 (p++ to skip backslash), 413 (NUL check → false),
+     * 415 (length++), and 416 (p++) are all executed.
+     *
+     * JSON: ["a\nb"]  — raw: [ " a \ n b " ]
+     * Length: 8 characters inclusive of brackets. */
+    char s[] = "[\"a\\nb\"]";
+
+    uint16_t len = okj_measure_container(s);
+
+    assert(len == 8U);
+
+    printf("test_measure_container_escape_in_string passed!\n");
+}
+
+void test_measure_container_escape_at_eof(void)
+{
+    /* Feed okj_measure_container() a container string whose embedded string
+     * is truncated right after a backslash so that the NUL check at line 413
+     * evaluates to true (the else-branch: don't count or advance past NUL).
+     *
+     * Raw bytes: [ " a \  NUL  — unterminated array/string. */
+    char s[] = {'[', '"', 'a', '\\', '\0'};
+
+    /* The function must not crash; it returns whatever it measured before
+     * hitting NUL (the while loop exits because *p == '\0'). */
+    uint16_t len = okj_measure_container(s);
+
+    /* At minimum the opening '[' was counted (length >= 1). */
+    assert(len >= 1U);
+
+    printf("test_measure_container_escape_at_eof passed!\n");
+}
+
+void test_parse_value_null_parser(void)
+{
+    /* okj_parse_value() is a static function visible via direct include.
+     * Passing NULL must hit the guard at line 522 and return
+     * OKJ_ERROR_BAD_POINTER without dereferencing anything. */
+
+    OkjError result = okj_parse_value(NULL);
+
+    assert(result == OKJ_ERROR_BAD_POINTER);
+
+    printf("test_parse_value_null_parser passed!\n");
+}
+
+void test_open_brace_wrong_context(void)
+{
+    /* After a value has been parsed inside an object the parser expects a
+     * ',' or '}' (WANT_SEP_OR_CLOSE).  Encountering '{' in that context is
+     * invalid and must return OKJ_ERROR_SYNTAX (line 539). */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\":1{\"b\":2}}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_open_brace_wrong_context passed!\n");
+}
+
+void test_open_bracket_wrong_context(void)
+{
+    /* After a value has been parsed inside an object the parser expects a
+     * ',' or '}' (WANT_SEP_OR_CLOSE).  Encountering '[' in that context is
+     * invalid and must return OKJ_ERROR_SYNTAX (line 566). */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{\"a\":1[1,2]}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_open_bracket_wrong_context passed!\n");
+}
+
+void test_array_max_depth_exceeded(void)
+{
+    /* Build 17 nested arrays to verify the depth ceiling (OKJ_MAX_DEPTH = 16)
+     * is enforced for '[' specifically (line 571).
+     *
+     * Layout: [ [ [ ... (17 times) ... 1 ] ... ] ]
+     * At the 17th '[' the depth check fires before the token is emitted. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    uint16_t     i;
+    uint16_t     pos;
+
+    /* 17 '[' + '1' + 17 ']' = 35 chars + NUL */
+    char json[36];
+    pos = 0U;
+
+    for (i = 0U; i < 17U; i++)
+    {
+        json[pos++] = '[';
+    }
+
+    json[pos++] = '1';
+
+    for (i = 0U; i < 17U; i++)
+    {
+        json[pos++] = ']';
+    }
+
+    json[pos] = '\0';
+
+    okj_init(&parser, json);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_MAX_DEPTH_EXCEEDED);
+
+    printf("test_array_max_depth_exceeded passed!\n");
+}
+
+void test_close_brace_depth_zero(void)
+{
+    /* To reach the OKJ_ERROR_BRACKET_MISMATCH return at line 602 the parser
+     * must be in a context that accepts '}' (WANT_KEY_OR_CLOSE or
+     * WANT_SEP_OR_CLOSE) but have depth == 0.  This state cannot arise from
+     * a well-formed token sequence, so we call the static okj_parse_value()
+     * directly after setting the parser fields by hand. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[] = "}";
+
+    okj_init(&parser, json_str);
+
+    /* Override context so the context guard at line 593 is passed. */
+    parser.context = OKJ_CTX_WANT_KEY_OR_CLOSE;
+    parser.depth   = 0U;
+
+    result = okj_parse_value(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_close_brace_depth_zero passed!\n");
+}
+
+void test_close_bracket_depth_zero(void)
+{
+    /* Symmetric to test_close_brace_depth_zero for ']' (line 634):
+     * context WANT_VALUE_OR_CLOSE passes the context guard but depth == 0
+     * triggers the OKJ_ERROR_BRACKET_MISMATCH return. */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[] = "]";
+
+    okj_init(&parser, json_str);
+
+    parser.context = OKJ_CTX_WANT_VALUE_OR_CLOSE;
+    parser.depth   = 0U;
+
+    result = okj_parse_value(&parser);
+
+    assert(result == OKJ_ERROR_BRACKET_MISMATCH);
+
+    printf("test_close_bracket_depth_zero passed!\n");
+}
+
+void test_comma_outside_container(void)
+{
+    /* The guard at line 663 fires when a comma is encountered in
+     * WANT_SEP_OR_CLOSE context but depth == 0.  Construct this state
+     * directly via okj_parse_value(). */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char         json_str[] = ",";
+
+    okj_init(&parser, json_str);
+
+    parser.context = OKJ_CTX_WANT_SEP_OR_CLOSE;
+    parser.depth   = 0U;
+
+    result = okj_parse_value(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_comma_outside_container passed!\n");
+}
+
+void test_false_as_object_key(void)
+{
+    /* RFC 8259 §4: object keys must be strings.  When the parser is in
+     * WANT_KEY_OR_CLOSE context and encounters the keyword 'false' it must
+     * return OKJ_ERROR_SYNTAX (lines 983-985). */
+
+    OkJsonParser parser;
+    OkjError     result;
+    char json_str[] = "{false: \"value\"}";
+
+    okj_init(&parser, json_str);
+    result = okj_parse(&parser);
+
+    assert(result == OKJ_ERROR_SYNTAX);
+
+    printf("test_false_as_object_key passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -5093,6 +5357,20 @@ int main(int argc, char* argv[])
     test_okj_get_token_key_not_found();
     test_okj_get_array_raw_key_not_found();
     test_okj_get_object_raw_key_not_found();
+
+    /* Coverage for previously uncovered branches */
+    test_skip_string_backslash_escape();
+    test_skip_string_backslash_at_eof();
+    test_measure_container_escape_in_string();
+    test_measure_container_escape_at_eof();
+    test_parse_value_null_parser();
+    test_open_brace_wrong_context();
+    test_open_bracket_wrong_context();
+    test_array_max_depth_exceeded();
+    test_close_brace_depth_zero();
+    test_close_bracket_depth_zero();
+    test_comma_outside_container();
+    test_false_as_object_key();
 
     printf("All OK_JSON tests passed!\n");
 

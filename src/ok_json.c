@@ -61,7 +61,11 @@ static uint8_t okj_is_utf8_continuation(uint8_t byte)
 }
 
 /* Validate one UTF-8 scalar-value sequence starting at src[pos].
- * On success sets *advance (1..4) and returns 1, else returns 0. */
+ * On success sets *advance (1..4) and returns 1, else returns 0.
+ * TODO: Refactoring this to comply with single return rule has
+ * really made the cognitive complexity of this function worse.
+ * Need to refactor this again to reduce it. -RLM
+ */
 static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_t *advance)
 {
     uint8_t b0;
@@ -69,110 +73,141 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
     uint8_t b2;
     uint8_t b3;
 
-    if ((src == NULL) || (advance == NULL))
+    uint8_t result = 0U;
+
+    if ((src != NULL) && (advance != NULL))
     {
-        return 0U;
-    }
+        b0 = (uint8_t)src[pos];
 
-    b0 = (uint8_t)src[pos];
-
-    if (b0 <= 0x7FU)
-    {
-        *advance = 1U;
-        return 1U;
-    }
-
-    b1 = (uint8_t)src[pos + 1U];
-
-    if ((b0 >= 0xC2U) && (b0 <= 0xDFU))
-    {
-        if (okj_is_utf8_continuation(b1) != 0U)
+        if (b0 <= 0x7FU)
         {
-            *advance = 2U;
-            return 1U;
+            *advance = 1U;
+            result = 1U;
         }
-
-        return 0U;
-    }
-
-    b2 = (uint8_t)src[pos + 2U];
-
-    if (b0 == 0xE0U)
-    {
-        if ((b1 >= 0xA0U) && (b1 <= 0xBFU) && (okj_is_utf8_continuation(b2) != 0U))
+        else
         {
-            *advance = 3U;
-            return 1U;
-        }
+            b1 = (uint8_t)src[pos + 1U];
 
-        return 0U;
+            if ((b0 >= 0xC2U) && (b0 <= 0xDFU))
+            {
+                if (okj_is_utf8_continuation(b1) != 0U)
+                {
+                    *advance = 2U;
+                    result = 1U;
+                }
+                else
+                {
+                    result = 0U;
+                }
+            }
+            else
+            {
+                b2 = (uint8_t)src[pos + 2U];
+
+                if (b0 == 0xE0U)
+                {
+                    if ((b1 >= 0xA0U) && (b1 <= 0xBFU) &&
+                        (okj_is_utf8_continuation(b2) != 0U))
+                    {
+                        *advance = 3U;
+                        result = 1U;
+                    }
+                    else
+                    {
+                        result = 0U;
+                    }
+                }
+                else
+                {
+                    if (((b0 >= 0xE1U) && (b0 <= 0xECU)) ||
+                        ((b0 >= 0xEEU) && (b0 <= 0xEFU)))
+                    {
+                        if ((okj_is_utf8_continuation(b1) != 0U) &&
+                            (okj_is_utf8_continuation(b2) != 0U))
+                        {
+                            *advance = 3U;
+                            result = 1U;
+                        }
+                        else
+                        {
+                            result = 0U;
+                        }
+                    }
+                    else
+                    {
+                        if (b0 == 0xEDU)
+                        {
+                            if ((b1 >= 0x80U) && (b1 <= 0x9FU) &&
+                                (okj_is_utf8_continuation(b2) != 0U))
+                            {
+                                *advance = 3U;
+                                result = 1U;
+                            }
+                            else
+                            {
+                                result = 0U;
+                            }
+                        }
+                        else
+                        {
+                            b3 = (uint8_t)src[pos + 3U];
+
+                            if (b0 == 0xF0U)
+                            {
+                                if ((b1 >= 0x90U) && (b1 <= 0xBFU) &&
+                                    (okj_is_utf8_continuation(b2) != 0U) &&
+                                    (okj_is_utf8_continuation(b3) != 0U))
+                                {
+                                    *advance = 4U;
+                                    result = 1U;
+                                }
+                                else
+                                {
+                                    result = 0U;
+                                }
+                            }
+                            else
+                            {
+                                if ((b0 >= 0xF1U) && (b0 <= 0xF3U))
+                                {
+                                    if ((okj_is_utf8_continuation(b1) != 0U) &&
+                                        (okj_is_utf8_continuation(b2) != 0U) &&
+                                        (okj_is_utf8_continuation(b3) != 0U))
+                                    {
+                                        *advance = 4U;
+                                        result = 1U;
+                                    }
+                                    else
+                                    {
+                                        result = 0U;
+                                    }
+                                }
+                                else
+                                {
+                                    if (b0 == 0xF4U)
+                                    {
+                                        if ((b1 >= 0x80U) && (b1 <= 0x8FU) &&
+                                            (okj_is_utf8_continuation(b2) != 0U) &&
+                                            (okj_is_utf8_continuation(b3) != 0U))
+                                        {
+                                            *advance = 4U;
+                                            result = 1U;
+                                        }
+                                        else
+                                        {
+                                            result = 0U;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    if (((b0 >= 0xE1U) && (b0 <= 0xECU)) || ((b0 >= 0xEEU) && (b0 <= 0xEFU)))
-    {
-        if ((okj_is_utf8_continuation(b1) != 0U) &&
-            (okj_is_utf8_continuation(b2) != 0U))
-        {
-            *advance = 3U;
-            return 1U;
-        }
-
-        return 0U;
-    }
-
-    if (b0 == 0xEDU)
-    {
-        if ((b1 >= 0x80U) && (b1 <= 0x9FU) && (okj_is_utf8_continuation(b2) != 0U))
-        {
-            *advance = 3U;
-            return 1U;
-        }
-
-        return 0U;
-    }
-
-    b3 = (uint8_t)src[pos + 3U];
-
-    if (b0 == 0xF0U)
-    {
-        if ((b1 >= 0x90U) && (b1 <= 0xBFU) &&
-            (okj_is_utf8_continuation(b2) != 0U) &&
-            (okj_is_utf8_continuation(b3) != 0U))
-        {
-            *advance = 4U;
-            return 1U;
-        }
-
-        return 0U;
-    }
-
-    if ((b0 >= 0xF1U) && (b0 <= 0xF3U))
-    {
-        if ((okj_is_utf8_continuation(b1) != 0U) &&
-            (okj_is_utf8_continuation(b2) != 0U) &&
-            (okj_is_utf8_continuation(b3) != 0U))
-        {
-            *advance = 4U;
-            return 1U;
-        }
-
-        return 0U;
-    }
-
-    if (b0 == 0xF4U)
-    {
-        if ((b1 >= 0x80U) && (b1 <= 0x8FU) &&
-            (okj_is_utf8_continuation(b2) != 0U) &&
-            (okj_is_utf8_continuation(b3) != 0U))
-        {
-            *advance = 4U;
-            return 1U;
-        }
-
-        return 0U;
-    }
-
-    return 0U;
+    return result;
 }
 
 /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.

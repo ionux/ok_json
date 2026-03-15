@@ -6,9 +6,9 @@ by embedded developers as a minimal, dependency-free library.
 
 ---
 
-## Current State Summary (updated 2026-03-10)
+## Current State Summary (updated 2026-03-15)
 
-**MVP is complete and post-MVP work is ongoing.** All 65 tests pass. The build
+**MVP is complete and post-MVP work is ongoing.** All 190 tests pass. The build
 is clean (zero warnings, zero errors). The library has zero stdlib dependencies
 in `ok_json.c`. The CI Valgrind path is correct.
 
@@ -25,7 +25,21 @@ Post-MVP additions since the original MVP completion:
 - Fixed-size depth/state stack: `depth_stack[OKJ_MAX_DEPTH]` and `depth` in
   `OkJsonParser`; bracket matching and depth ceiling (`OKJ_MAX_DEPTH=16`);
   two new error codes (`OKJ_ERROR_MAX_DEPTH_EXCEEDED`, `OKJ_ERROR_BRACKET_MISMATCH`)
-- Test suite grown from 13 to 65 tests
+- Full RFC 3629 UTF-8 validation via `okj_validate_utf8_sequence()`: handles
+  2-, 3-, and 4-byte sequences; rejects overlong encodings, surrogates, and
+  truncated sequences; invoked from the string scanner in `okj_parse_value()`
+- `okj_debug_print()` utility function for token-by-token parser state dump
+- MISRA C:2012 compliance work: `MISRA_C2012_COMPLIANCE.md` created; all
+  cppcheck-checked rules pass except five suppressed (Rules 8.9, 15.4, 15.5,
+  19.1, 19.2); project is substantially aligned with MISRA C:2012
+- Test file changed to `#include "../src/ok_json.c"` directly, giving full
+  visibility into static helpers for accurate branch coverage (gcov/gcovr)
+- Security and robustness tests: backslash flood at/over limit, escape
+  straddle at boundary, UTF-8 overlong NUL (0xC0 0x80), control character
+  injection (bare tab/LF in string values), modified UTF-8 NULL byte,
+  quoted-string structural-character spoofing, multi-byte UTF-8 boundary
+  cases, and many more
+- Test suite grown from 13 to 190 tests
 
 The sections below are preserved for historical reference, with status
 annotations added. Open items have been moved to the TODO_LIST.
@@ -110,7 +124,7 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 | # | Task | Status |
 |---|------|--------|
 | 20 | Fix CI Valgrind path: `./tests/` → `./test/` in `ci.yml` | ✅ Already correct |
-| 21 | Add tests for each getter function once implemented | ✅ Done (65 tests total) |
+| 21 | Add tests for each getter function once implemented | ✅ Done (190 tests total) |
 | 22 | Add test for `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | ✅ `test_max_tokens_exceeded` |
 | 23 | Add test for deeply nested JSON rejection | ✅ `test_deeply_nested_at_limit` (updated post-MVP to exercise depth ceiling) |
 | 24 | Add test for `OKJ_ERROR_UNEXPECTED_END` (truncated JSON) | ✅ `test_truncated_string` |
@@ -147,7 +161,7 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 ## Definition of Done (MVP) — ✅ ALL MET
 
 1. ✅ `make` completes with zero warnings and zero errors.
-2. ✅ `make test` runs and all tests pass (13 at MVP; 65 as of 2026-03-10).
+2. ✅ `make test` runs and all tests pass (13 at MVP; 190 as of 2026-03-15).
 3. ✅ The Valgrind step in CI references the correct binary path.
 4. ✅ No `printf` debug statements remain in `ok_json.c`.
 5. ✅ `ok_json.c` does not `#include <ctype.h>`, `<string.h>`, or `<stdio.h>`.

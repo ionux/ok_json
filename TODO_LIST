@@ -1,32 +1,65 @@
 Items that I want/need to work on:
 
-MVP is complete as of 2026-03-05. All 65 tests pass. Zero stdlib dependencies.
+MVP is complete as of 2026-03-05. All 190 tests pass. Zero stdlib dependencies.
 See MVP_ROADMAP.md for the full historical task list with completion status.
 
 Post-MVP items remaining:
 
-* Apply MISRA C2012 single-return to okj_parse_value().
-  The function now has multiple early returns: one for the NULL-pointer guard
-  and several added by the depth-stack implementation (OKJ_ERROR_MAX_DEPTH_EXCEEDED
-  on push overflow, OKJ_ERROR_BRACKET_MISMATCH on close mismatch or underflow).
-  Requires restructuring with a single result variable, the same pattern used in
-  okj_parse().  Full MISRA compliance requires a MISRA-capable toolchain and
-  formal analysis; continue deferring the toolchain requirement, but the code
-  change itself is achievable without toolchain support.
+* Apply MISRA C2012 single-return to okj_parse_value() (Rule 15.5).
+  The function still has multiple early returns: one for the NULL-pointer guard
+  (OKJ_ERROR_BAD_POINTER) and many more throughout the else-if chain
+  (OKJ_ERROR_SYNTAX, OKJ_ERROR_MAX_DEPTH_EXCEEDED, OKJ_ERROR_BRACKET_MISMATCH).
+  Requires restructuring so all error paths set a single result variable and
+  fall through to one return at the end — the same pattern used in okj_parse().
+  Rule 15.5 is currently suppressed in the cppcheck MISRA configuration.
 
-* Remove or repurpose test/ok_json_test_runner.c. (deferred by user)
-  The file currently contains only "/* placeholder */" and is not compiled by
-  the Makefile (the test binary is built from ok_json_tests.c which already
-  has main()).  Either delete it or use it as a separate harness entry point
-  if the test suite is ever split into declaration and runner files.
+* Apply MISRA C2012 final-else to all if...else if chains (Rule 15.4).
+  Rule 15.4 requires that every if...else if chain ends with a terminating
+  else clause. Currently suppressed in the cppcheck MISRA configuration.
+  Affected chains are primarily in okj_parse_value() and okj_validate_utf8_sequence().
 
-* Remove OKJ_VALID_CHARS from ok_json.h or put it to use. (deferred by user)
+* Remove OKJ_VALID_CHARS from ok_json.h or put it to use.
   The 96-element static const array is defined in the header but referenced
-  nowhere in ok_json.c or the tests.  As a static in a header it gets
+  nowhere in ok_json.c or the tests. As a static in a header it gets
   duplicated into every translation unit that includes the header, wasting
-  ROM.  Intended to be used for string character validation in the future.
+  ROM. This also triggers MISRA Rule 8.9 (objects with single-function scope
+  should be defined at block scope). Intended to be used for string character
+  validation in the future. Rule 8.9 is currently suppressed.
+
+* Resolve MISRA Rule 19.1 (objects should not be assigned or copied to
+  overlapping objects). Currently suppressed. Requires review and refactoring
+  of any copy/assignment operations that may involve overlapping objects.
+
+* Resolve MISRA Rule 19.2 (the union keyword should not be used). Currently
+  suppressed. Requires a redesign or alternative representation that avoids
+  unions, if any are present.
 
 Completed post-MVP items:
+
+* [DONE] Remove test/ok_json_test_runner.c (2026-03-15).
+  The placeholder file (containing only "/* placeholder */") was deleted.
+  The compiled binary is still named ok_json_test_runner but is produced from
+  ok_json_tests.c, which contains main().
+
+* [DONE] Add okj_validate_utf8_sequence() for full RFC 3629 UTF-8 validation
+  (2026-03-15). Handles 2-, 3-, and 4-byte sequences; rejects overlong
+  encodings (including the modified UTF-8 NUL 0xC0 0x80), surrogate code
+  points (U+D800–U+DFFF), and truncated sequences. Integrated into the string
+  scanner in okj_parse_value(). Supporting helpers: okj_is_utf8_continuation(),
+  okj_is_hex_digit().
+
+* [DONE] Create MISRA_C2012_COMPLIANCE.md (2026-03-15).
+  Formal compliance tracking document based on cppcheck MISRA analysis results.
+  All checked rules pass except five currently suppressed (Rules 8.9, 15.4,
+  15.5, 19.1, 19.2). Project is described as "substantially aligned with
+  current MISRA C:2012 static-analysis checks, with five known suppressed rule
+  exceptions."
+
+* [DONE] Change test compilation to include src/ok_json.c directly (2026-03-15).
+  test/ok_json_tests.c now has #include "../src/ok_json.c" at the top, giving
+  the test binary full visibility into static helpers (okj_is_whitespace,
+  okj_is_digit, okj_match, okj_skip_string, okj_count_array_elements, etc.)
+  without any indirection. Enables accurate branch coverage with gcov/gcovr.
 
 * [DONE] Implement fixed-size depth/state stack with bracket matching, depth
   ceiling, and container-type tracking (2026-03-10).

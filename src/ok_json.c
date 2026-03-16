@@ -414,71 +414,71 @@ static uint16_t okj_measure_container(const char *start)
 {
     const char *p = start;
 
-    if ((p == NULL) || ((*p != '[') && (*p != '{')))
-    {
-        return 0U;
-    }
-
-    uint16_t depth  = 0U;
     uint16_t length = 0U;
 
-    while (*p != '\0')
+    if ((p != NULL) && ((*p == '[') || (*p == '{')))
     {
-        char c = *p;
-        length++;
+        uint16_t depth  = 0U;
 
-        if (c == '"')
+        while (*p != '\0')
         {
-            /* Skip past the opening quote (already counted above). */
-            p++;
+            char c = *p;
 
-            while ((*p != '\0') && (*p != '"'))
+            length++;
+
+            if (c == '"')
             {
-                if (*p == '\\')
-                {
-                    p++;
+                /* Skip past the opening quote (already counted above). */
+                p++;
 
-                    if (*p != '\0')
+                while ((*p != '\0') && (*p != '"'))
+                {
+                    if (*p == '\\')
                     {
-                        length++;
+                        p++;
+
+                        if (*p != '\0')
+                        {
+                            length++;
+                            p++;
+                        }
+                    }
+                    else
+                    {
                         p++;
                     }
+
+                    length++;
                 }
-                else
+
+                /* Count the closing quote if present, then continue. */
+                if (*p == '"')
                 {
+                    length++;
                     p++;
                 }
-
-                length++;
-            }
-
-            /* Count the closing quote if present, then continue. */
-            if (*p == '"')
-            {
-                length++;
-                p++;
-            }
-        }
-        else
-        {
-            if ((c == '[') || (c == '{'))
-            {
-                depth++;
-            }
-            else if ((c == ']') || (c == '}'))
-            {
-                depth--;
             }
             else
             {
-                /* whitespace, digits, colons, commas, letters, etc. */
-            }
+                if ((c == '[') || (c == '{'))
+                {
+                    depth++;
+                }
+                else if ((c == ']') || (c == '}'))
+                {
+                    depth--;
+                }
+                else
+                {
+                    /* whitespace, digits, colons, commas, letters, etc. */
+                }
 
-            p++;
+                p++;
 
-            if (depth == 0U)
-            {
-                break;
+                if (depth == 0U)
+                {
+                    break;
+                }
             }
         }
     }

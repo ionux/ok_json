@@ -68,16 +68,11 @@ static uint8_t okj_is_utf8_continuation(uint8_t byte)
  */
 static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_t *advance)
 {
-    uint8_t b0;
-    uint8_t b1;
-    uint8_t b2;
-    uint8_t b3;
-
     uint8_t result = 0U;
 
     if ((src != NULL) && (advance != NULL))
     {
-        b0 = (uint8_t)src[pos];
+        uint8_t b0 = (uint8_t)src[pos];
 
         if (b0 <= 0x7FU)
         {
@@ -86,7 +81,7 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
         }
         else
         {
-            b1 = (uint8_t)src[pos + 1U];
+            uint8_t b1 = (uint8_t)src[pos + 1U];
 
             if ((b0 >= 0xC2U) && (b0 <= 0xDFU))
             {
@@ -102,7 +97,7 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
             }
             else
             {
-                b2 = (uint8_t)src[pos + 2U];
+                uint8_t b2 = (uint8_t)src[pos + 2U];
 
                 if (b0 == 0xE0U)
                 {
@@ -150,7 +145,7 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
                         }
                         else
                         {
-                            b3 = (uint8_t)src[pos + 3U];
+                            uint8_t b3 = (uint8_t)src[pos + 3U];
 
                             if (b0 == 0xF0U)
                             {

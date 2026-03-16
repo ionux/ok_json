@@ -361,45 +361,44 @@ static uint16_t okj_count_object_members(const char *start)
 {
     const char *p = start;
 
-    if ((p == NULL) || (*p != '{'))
-    {
-        return 0U;
-    }
-
-    p++;        /* skip '{' */
-
-    uint16_t depth = 1U;
     uint16_t count = 0U;
 
-    while ((*p != '\0') && (depth > 0U))
+    if ((p != NULL) && (*p == '{'))
     {
-        char c = *p;
+        p++;        /* skip '{' */
 
-        if (c == '"')
+        uint16_t depth = 1U;
+
+        while ((*p != '\0') && (depth > 0U))
         {
-            /* Skip string content so colons inside keys/values are ignored. */
-            p = okj_skip_string(p);
-        }
-        else
-        {
-            if ((c == '[') || (c == '{'))
+            char c = *p;
+
+            if (c == '"')
             {
-                depth++;
-            }
-            else if ((c == ']') || (c == '}'))
-            {
-                depth--;
-            }
-            else if ((c == ':') && (depth == 1U))
-            {
-                count++;
+                /* Skip string content so colons inside keys/values are ignored. */
+                p = okj_skip_string(p);
             }
             else
             {
-                /* Other characters need no action. */
-            }
+                if ((c == '[') || (c == '{'))
+                {
+                    depth++;
+                }
+                else if ((c == ']') || (c == '}'))
+                {
+                    depth--;
+                }
+                else if ((c == ':') && (depth == 1U))
+                {
+                    count++;
+                }
+                else
+                {
+                    /* Other characters need no action. */
+                }
 
-            p++;
+                p++;
+            }
         }
     }
 

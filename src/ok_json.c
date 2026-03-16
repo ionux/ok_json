@@ -288,68 +288,67 @@ static uint16_t okj_count_array_elements(const char *start)
 {
     const char *p = start;
 
-    if ((p == NULL) || (*p != '['))
-    {
-        return 0U;
-    }
-
-    p++;        /* skip '[' */
-
-    uint16_t depth = 1U;
     uint16_t count = 0U;
 
-    uint8_t  seen  = 0U;    /* set when first non-whitespace element is found */
-
-    while ((*p != '\0') && (depth > 0U))
+    if ((p != NULL) && (*p == '['))
     {
-        char c = *p;
+        p++;        /* skip '[' */
 
-        if (c == '"')
-        {
-            /* Skip string content so commas inside strings are not counted. */
-            p = okj_skip_string(p);
+        uint16_t depth = 1U;
 
-            if ((depth == 1U) && (seen == 0U))
-            {
-                seen = 1U;
-            }
-        }
-        else
+        uint8_t  seen  = 0U;    /* set when first non-whitespace element is found */
+
+        while ((*p != '\0') && (depth > 0U))
         {
-            if ((c == '[') || (c == '{'))
+            char c = *p;
+
+            if (c == '"')
             {
+                /* Skip string content so commas inside strings are not counted. */
+                p = okj_skip_string(p);
+
                 if ((depth == 1U) && (seen == 0U))
                 {
                     seen = 1U;
                 }
-
-                depth++;
-            }
-            else if ((c == ']') || (c == '}'))
-            {
-                depth--;
-            }
-            else if ((c == ',') && (depth == 1U))
-            {
-                count++;
-            }
-            else if ((!okj_is_whitespace(c)) && (depth == 1U) && (seen == 0U))
-            {
-                seen = 1U;
             }
             else
             {
-                /* Other characters (digits, letters, etc.) need no action. */
+                if ((c == '[') || (c == '{'))
+                {
+                    if ((depth == 1U) && (seen == 0U))
+                    {
+                        seen = 1U;
+                    }
+
+                    depth++;
+                }
+                else if ((c == ']') || (c == '}'))
+                {
+                    depth--;
+                }
+                else if ((c == ',') && (depth == 1U))
+                {
+                    count++;
+                }
+                else if ((!okj_is_whitespace(c)) && (depth == 1U) && (seen == 0U))
+                {
+                    seen = 1U;
+                }
+                else
+                {
+                    /* Other characters (digits, letters, etc.) need no action. */
+                }
+
+                p++;
             }
-
-            p++;
         }
-    }
 
-    /* The comma count equals elements-minus-one for a non-empty array. */
-    if (seen != 0U)
-    {
-        count++;
+        /* The comma count equals elements-minus-one for a non-empty array. */
+        if (seen != 0U)
+        {
+            count++;
+        }
     }
 
     return count;

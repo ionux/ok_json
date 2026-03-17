@@ -69,26 +69,26 @@ typedef unsigned char   uint8_t;
 /**
  * @brief Maximum key or string length
  **/
-static const uint16_t OKJ_MAX_STRING_LEN = 64U;
+#define OKJ_MAX_STRING_LEN 64U
 
 /**
  * @brief Maximum size of array to process
  **/
-static const uint16_t OKJ_MAX_ARRAY_SIZE = 64U;
+#define OKJ_MAX_ARRAY_SIZE 64U
 
 /**
  * @brief Maximum number of key-value members in an object to process.
  * Note: must stay below (OKJ_MAX_TOKENS - 1) / 2 so that a fully-parsed
  * object never exhausts the token budget before the member limit fires.
  **/
-static const uint16_t OKJ_MAX_OBJECT_SIZE = 32U;
+#define OKJ_MAX_OBJECT_SIZE 32U
 
 /**
  * @brief Maximum length of the raw JSON input string in bytes (excluding the
  * terminating NUL character).  Inputs longer than this are rejected by
  * okj_parse() before any tokenisation begins.
  **/
-static const uint16_t OKJ_MAX_JSON_LEN = 4096U;
+#define OKJ_MAX_JSON_LEN 4096U
 
 /**
  * @brief Array of all valid ASCII characters for string processing

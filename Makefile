@@ -31,3 +31,7 @@ coverage: clean test
 clean:
 	rm -f $(OBJ) ok_json.a test/ok_json_test_runner \
 	      *.gcno *.gcda src/*.gcno src/*.gcda test/*.gcno test/*.gcda coverage.xml
+
+fuzz: test/fuzz_target.c $(SRC)
+	clang -g -O1 -fsanitize=fuzzer,address,undefined -Iinclude test/fuzz_target.c -o fuzzer
+	./fuzzer -max_total_time=30 -max_len=4096

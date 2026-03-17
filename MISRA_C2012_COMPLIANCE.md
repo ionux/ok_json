@@ -23,7 +23,7 @@ Current status is based on the `cppcheck` MISRA analysis results for the project
 | Status | Meaning |
 |---|---|
 | **Pass** | Currently passing in the project's `cppcheck` MISRA analysis |
-| **Suppressed / Planned Refactor** | Currently suppressed and intentionally deferred pending future code refactoring |
+| **Planned Refactor** | Currently deferred pending future code refactoring |
 | **Manual Review Needed** | May require manual review, process evidence, or analysis beyond current tool results |
 | **N/A / Out of Scope** | Not applicable to the current project scope or not claimed by this matrix |
 
@@ -35,31 +35,32 @@ Current status is based on the `cppcheck` MISRA analysis results for the project
 
 Based on the current `cppcheck` MISRA analysis results:
 
-- all currently checked MISRA C:2012 rules are passing **except**
-  - Rule 8.9
-  - Rule 15.4
-  - Rule 15.5
-- these three rules are currently tracked for future remediation
+- all currently checked MISRA C:2012 rules are passing
+- all previously known outstanding rule failures have been refactored and resolved
+- no currently suppressed MISRA rule exceptions are being tracked in this matrix
 
 Accordingly, the project should presently be described as:
 
-> **substantially aligned with current MISRA C:2012 static-analysis checks, with three known rule exceptions**
+> **passing cppcheck MISRA C:2012 analysis with no known outstanding rule failures**
 
-The project should **not** currently be described as fully MISRA C:2012 compliant unless those exceptions are either:
-- resolved through refactoring, or
-- retained as formally documented and approved deviations
+The project should avoid overstating this as formal or complete MISRA compliance 
+without the additional process evidence normally associated with a full compliance claim, such as:
+
+- tool/version/configuration contro
+- documented review scope
+- manual review where needed
+- deviation records if ever applicable
+- assessment of tool limitations
 
 ---
 
 ## 4. Summary
 
-### 4.1 Rules currently not passing
-- **Rule 8.9**
-- **Rule 15.4**
-- **Rule 15.5**
+### 4.1 Current rule exceptions
+- None
 
-### 4.2 All other MISRA C:2012 rules
-- **Current status:** Pass in current `cppcheck` MISRA analysis
+### 4.2 MISRA C:2012 rule status
+- **Current status:** All pass in current `cppcheck` MISRA analysis
 
 ---
 
@@ -67,10 +68,7 @@ The project should **not** currently be described as fully MISRA C:2012 complian
 
 | Rule | Short Topic Summary | Current Status | Notes |
 |---|---|---:|---|
-| **8.9** | Objects should be defined at block scope if only accessed within a single function | **Planned Refactor** | Currently pending structural refactoring. |
-| **15.4** | Single `break` or `goto` per control structure | **Planned Refactor** | Currently pending control-flow refactoring. |
-| **15.5** | Functions should have a single point of exit at the end | **Planned Refactor** | Currently pending more extensive function restructuring. |
-| **All other rules checked by the current analysis configuration** | Various | **Pass** | Passing in current `cppcheck` MISRA analysis. |
+| **All rules checked by the current analysis configuration** | Various | **Pass** | Passing in current `cppcheck` MISRA analysis. |
 
 ---
 
@@ -78,9 +76,8 @@ The project should **not** currently be described as fully MISRA C:2012 complian
 
 | Rule | Planned Action | Remarks |
 |---|---|---|
-| **8.9** | Refactor declarations to narrower block scope where practical | Expected to require localized cleanup and reorganization. |
-| **15.4** | Refactor control structures to use only a single `break` or `goto` | May require readability and maintainability tradeoff decisions. |
-| **15.5** | Refactor toward single-exit functions where practical | Likely to require broader restructuring in some functions. |
+| N/A | No current exceptions tracked. | N/A |
+
 
 ---
 
@@ -101,7 +98,6 @@ This matrix reflects the current project tracking state and should be read with 
    - the code changes materially
    - the tool version changes
    - the MISRA configuration changes
-   - suppressed findings are resolved or reclassified
 
 3. **Some MISRA rules may require subject-matter expert review and judgment.**  
    Static-analysis results should be treated as important evidence, not as the sole basis for compliance claims.
@@ -132,7 +128,7 @@ Recommended future enhancements:
 
 The following wording is recommended:
 
-> `ok_json` is being developed toward MISRA C:2012 compliance. Current `cppcheck` MISRA analysis reports all checked rules passing except Rules 8.9, 15.4, and 15.5, which are currently tracked for future refactoring.
+> `ok_json` currently passes the project's `cppcheck` MISRA C:2012 analysis with no known outstanding rule failures in the analyzed configurations. This reflects current static-analysis results and should not be interpreted as formal MISRA certification by itself.
 
 ---
 
@@ -150,11 +146,11 @@ This document should be updated whenever any of the following occurs:
 
 ## 11. Current Bottom-Line Assessment
 
-At the time of writing, the `ok_json` project appears to be in a strong **MISRA-oriented** state from a static-analysis perspective, with only three known rule exceptions remaining in the current `cppcheck` MISRA results.
+At the time of writing, the `ok_json` project appears to be in a strong state from a `cppcheck` MISRA static-analysis perspective.
 
 That is a meaningful project-quality signal.
 
-However, until those exceptions are either resolved or formally documented as approved deviations, the most accurate characterization is:
+The most accurate characterization is:
 
-> **MISRA-oriented with three known exceptions, not yet fully MISRA C:2012 compliant**
+> passes all current cppcheck MISRA analysis; formal compliance still depends on broader process and evidence beyond tool output alone
 > 

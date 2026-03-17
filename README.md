@@ -9,6 +9,17 @@ The goals for this project are to be a simple, light, clean, fully tested, RFC 8
 - RFC 8259 and MISRA compliance progress and issues tracked in respective `*_COMPLIANCE` markdown files.  Informal analysis shows strong & significant alignment with both RFC 8259 and MISRA C:2012.
 - Current `cppcheck` MISRA analysis reports all checked rules passing.
 
+## Validation and Quality Checks
+
+`ok_json` is continuously checked in CI with:
+
+- unit tests
+- `cppcheck` static analysis
+- `valgrind`
+- `libFuzzer` with AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan)
+
+The fuzzing target is compiled with Clang and exercised in CI using coverage-guided fuzzing against the parser input surface. Current CI fuzz runs complete without sanitizer-detected crashes or undefined-behavior findings within the configured time budget.
+
 ## Quick Start
 
 ```c

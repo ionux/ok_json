@@ -486,18 +486,6 @@ static uint16_t okj_measure_container(const char *start)
     return length;
 }
 
-/* ---------------------------------------------------------------------------
- * File-scope result structs returned by getter functions.
- * Avoids dynamic allocation (suitable for embedded targets).
- * ---------------------------------------------------------------------------*/
-
-static OkJsonString  s_string_result;
-static OkJsonNumber  s_number_result;
-static OkJsonBoolean s_boolean_result;
-static OkJsonArray   s_array_result;
-static OkJsonObject  s_object_result;
-static OkJsonArray   s_full_array_result;
-static OkJsonObject  s_full_object_result;
 
 /* ---------------------------------------------------------------------------
  * Public API
@@ -1188,175 +1176,179 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
  * Getter functions
  * ---------------------------------------------------------------------------*/
 
-OkJsonString *okj_get_string(OkJsonParser *parser, const char *key)
+OkjError okj_get_string(OkJsonParser *parser, const char *key, OkJsonString *out_str)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_str == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_STRING))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_STRING;
     }
 
-    s_string_result.start  = parser->tokens[idx].start;
-    s_string_result.length = parser->tokens[idx].length;
+    out_str->start  = parser->tokens[idx].start;
+    out_str->length = parser->tokens[idx].length;
 
-    return &s_string_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonNumber *okj_get_number(OkJsonParser *parser, const char *key)
+OkjError okj_get_number(OkJsonParser *parser, const char *key, OkJsonNumber *out_num)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_num == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_NUMBER))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_NUMBER;
     }
 
-    s_number_result.start  = parser->tokens[idx].start;
-    s_number_result.length = parser->tokens[idx].length;
+    out_num->start  = parser->tokens[idx].start;
+    out_num->length = parser->tokens[idx].length;
 
-    return &s_number_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key)
+OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *out_bool)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_bool == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_BOOLEAN))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_BOOLEAN;
     }
 
-    s_boolean_result.start  = parser->tokens[idx].start;
-    s_boolean_result.length = parser->tokens[idx].length;
+    out_bool->start  = parser->tokens[idx].start;
+    out_bool->length = parser->tokens[idx].length;
 
-    return &s_boolean_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonArray *okj_get_array(OkJsonParser *parser, const char *key)
+OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_arr)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_arr == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_ARRAY;
     }
 
-    s_array_result.start  = parser->tokens[idx].start;
-    s_array_result.count  = okj_count_array_elements(parser->tokens[idx].start);
-    s_array_result.length = okj_measure_container(parser->tokens[idx].start);
+    out_arr->start  = parser->tokens[idx].start;
+    out_arr->count  = okj_count_array_elements(parser->tokens[idx].start);
+    out_arr->length = okj_measure_container(parser->tokens[idx].start);
 
-    if (s_array_result.count > OKJ_MAX_ARRAY_SIZE)
+    if (out_arr->count > OKJ_MAX_ARRAY_SIZE)
     {
-        return NULL;
+        return OKJ_ERROR_BAD_ARRAY;
     }
 
-    return &s_array_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonObject *okj_get_object(OkJsonParser *parser, const char *key)
+OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out_obj)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_obj == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_OBJECT;
     }
 
-    s_object_result.start  = parser->tokens[idx].start;
-    s_object_result.count  = okj_count_object_members(parser->tokens[idx].start);
-    s_object_result.length = okj_measure_container(parser->tokens[idx].start);
+    out_obj->start  = parser->tokens[idx].start;
+    out_obj->count  = okj_count_object_members(parser->tokens[idx].start);
+    out_obj->length = okj_measure_container(parser->tokens[idx].start);
 
-    if (s_object_result.count > OKJ_MAX_OBJECT_SIZE)
+    if (out_obj->count > OKJ_MAX_OBJECT_SIZE)
     {
-        return NULL;
+        return OKJ_ERROR_BAD_OBJECT;
     }
 
-    return &s_object_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonToken *okj_get_token(OkJsonParser *parser, const char *key)
+OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_tok)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_tok == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if (idx == OKJ_MAX_TOKENS)
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
-    return &parser->tokens[idx];
+    out_tok->type   = parser->tokens[idx].type;
+    out_tok->start  = parser->tokens[idx].start;
+    out_tok->length = parser->tokens[idx].length;
+
+    return OKJ_SUCCESS;
 }
 
-OkJsonArray *okj_get_array_raw(OkJsonParser *parser, const char *key)
+OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *out_arr)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_arr == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_ARRAY;
     }
 
-    s_full_array_result.start  = parser->tokens[idx].start;
-    s_full_array_result.count  = okj_count_array_elements(parser->tokens[idx].start);
-    s_full_array_result.length = okj_measure_container(parser->tokens[idx].start);
+    out_arr->start  = parser->tokens[idx].start;
+    out_arr->count  = okj_count_array_elements(parser->tokens[idx].start);
+    out_arr->length = okj_measure_container(parser->tokens[idx].start);
 
-    return &s_full_array_result;
+    return OKJ_SUCCESS;
 }
 
-OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key)
+OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject *out_obj)
 {
-    if ((parser == NULL) || (key == NULL))
+    if ((parser == NULL) || (key == NULL) || (out_obj == NULL))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_POINTER;
     }
 
     uint16_t idx = okj_find_value_index(parser, key);
 
     if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
     {
-        return NULL;
+        return OKJ_ERROR_BAD_OBJECT;
     }
 
-    s_full_object_result.start  = parser->tokens[idx].start;
-    s_full_object_result.count  = okj_count_object_members(parser->tokens[idx].start);
-    s_full_object_result.length = okj_measure_container(parser->tokens[idx].start);
+    out_obj->start  = parser->tokens[idx].start;
+    out_obj->count  = okj_count_object_members(parser->tokens[idx].start);
+    out_obj->length = okj_measure_container(parser->tokens[idx].start);
 
-    return &s_full_object_result;
+    return OKJ_SUCCESS;
 }
 
 uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)

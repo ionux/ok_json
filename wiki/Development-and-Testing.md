@@ -4,9 +4,10 @@
 
 - `include/ok_json.h` — public API and constants
 - `src/ok_json.c` — parser implementation
-- `test/ok_json_tests.c` — unit-style test cases
-- `test/ok_json_test_runner.c` — test entrypoint
-- `Makefile` — local build/test/coverage targets
+- `test/ok_json_tests.c` — unit-style test cases (compiled to produce the `test/ok_json_test_runner` binary)
+- `test/fuzz_target.c` — libFuzzer entry point for fuzz testing
+- `test/compliance_harness.c` — file-based harness for JSON test-suite compliance testing
+- `Makefile` — local build/test/coverage/fuzz targets
 - `.github/workflows/ci.yml` — GitHub Actions CI
 
 ## Build flags and style bias
@@ -33,6 +34,7 @@ in local builds.
 | `make ok_json.a` | Builds the static library only |
 | `make test` | Builds and runs the test binary |
 | `make coverage` | Rebuilds with `--coverage`, runs tests, and generates `coverage.xml` via `gcovr` |
+| `make fuzz` | Compiles `test/fuzz_target.c` with Clang libFuzzer + ASan/UBSan and runs the fuzzer for 30 seconds |
 | `make clean` | Removes all build artifacts including coverage data |
 
 ## Test coverage themes
@@ -73,7 +75,13 @@ For line/branch coverage (requires `gcovr`):
 make coverage
 ```
 
-The CI workflow additionally executes Valgrind over the test runner binary.
+The CI workflow (`build-and-test` job) additionally:
+
+- Runs Valgrind (`memcheck` with full leak checking and origin tracking) over the test runner binary.
+- Runs Cppcheck with the MISRA add-on against the test source, publishing results to the GitHub step summary.
+- Publishes a gcovr line/branch coverage summary to the GitHub step summary.
+
+A separate `fuzz` CI job compiles `test/fuzz_target.c` with Clang libFuzzer + ASan + UBSan and runs the fuzzer for up to 10 seconds per push/PR.
 
 ## Extending the project safely
 

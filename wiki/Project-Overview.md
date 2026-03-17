@@ -8,7 +8,9 @@ Core files:
 
 - Public API and types: `include/ok_json.h`
 - Implementation: `src/ok_json.c`
-- Tests: `test/ok_json_tests.c`, `test/ok_json_test_runner.c`
+- Tests: `test/ok_json_tests.c`
+- Fuzzer: `test/fuzz_target.c`
+- Compliance harness: `test/compliance_harness.c`
 - Build/test automation: `Makefile`, `.github/workflows/ci.yml`
 
 ## Core capabilities

@@ -248,7 +248,7 @@ void test_parse_simple_object(void)
     OkJsonParser parser;
     char json_str[] = "{\"key\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     OkjError result = okj_parse(&parser);
 
@@ -272,7 +272,7 @@ void test_parse_array(void)
     OkJsonParser parser;
     char json_str[] = "[1, 2, 3]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     OkjError result = okj_parse(&parser);
 
@@ -296,7 +296,7 @@ void test_invalid_json(void)
     OkJsonParser parser;
     char json_str[] = "{key: 42}"; /* Invalid: missing quotes */
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     OkjError result = okj_parse(&parser);
     assert(result == OKJ_ERROR_SYNTAX); /* 'k' is not a valid value start */
@@ -313,10 +313,10 @@ void test_get_string(void)
     OkJsonString str;
     char json_str[] = "{\"name\": \"Alice\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "name", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "name", 4U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 5U);       /* "Alice" is 5 characters */
     assert(str.start[0] == 'A');
@@ -333,7 +333,7 @@ void test_invalid_string(void)
     
     char json_str[] = "{\"name\": Alice}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_SYNTAX); /* 'A' is not a valid value start */
 
     printf("test_invalid_string passed!\n");
@@ -348,10 +348,10 @@ void test_get_number(void)
     OkJsonNumber num;
     char json_str[] = "{\"age\": 30}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "age", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "age", 3U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 2U);       /* "30" is 2 characters */
     assert(num.start[0] == '3');
@@ -368,10 +368,10 @@ void test_invalid_number(void)
     OkJsonNumber num;
     char json_str[] = "{\"age\": \"XYZ\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "age", &num) != OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "age", 3U, &num) != OKJ_SUCCESS);
 
     printf("test_invalid_number passed!\n");
 }
@@ -385,10 +385,10 @@ void test_number_negative(void)
     OkJsonNumber num;
     char json_str[] = "{\"n\": -42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 3U);      /* '-', '4', '2' */
     assert(num.start[0] == '-');
@@ -406,19 +406,19 @@ void test_number_float(void)
     char json2[] = "{\"n\": -1.5}";
 
     /* 3.14 */
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 4U);      /* '3', '.', '1', '4' */
     assert(num.start[0] == '3');
 
     /* -1.5 */
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 4U);      /* '-', '1', '.', '5' */
     assert(num.start[0] == '-');
@@ -439,28 +439,28 @@ void test_number_exponent(void)
     char json3[] = "{\"n\": 1E+2}";
 
     /* 1e10 */
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 4U);      /* '1', 'e', '1', '0' */
     assert(num.start[0] == '1');
 
     /* 2.5E-3 */
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 6U);      /* '2', '.', '5', 'E', '-', '3' */
     assert(num.start[0] == '2');
 
     /* 1E+2 */
-    okj_init(&parser, json3);
+    okj_init(&parser, json3, (uint16_t)(sizeof(json3) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 4U);      /* '1', 'E', '+', '2' */
     assert(num.start[0] == '1');
@@ -478,19 +478,19 @@ void test_number_zero_variants(void)
     char json2[] = "{\"n\": -0}";
 
     /* 0 */
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 1U);
     assert(num.start[0] == '0');
 
     /* -0 */
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 2U);
     assert(num.start[0] == '-');
@@ -505,7 +505,7 @@ void test_number_invalid_lone_minus(void)
     OkJsonParser parser;
     char json_str[] = "{\"n\": -}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
 
     printf("test_number_invalid_lone_minus passed!\n");
@@ -519,7 +519,7 @@ void test_number_invalid_leading_zero(void)
     OkJsonParser parser;
     char json_str[] = "{\"n\": 012}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
 
     printf("test_number_invalid_leading_zero passed!\n");
@@ -533,7 +533,7 @@ void test_number_invalid_trailing_decimal(void)
     OkJsonParser parser;
     char json_str[] = "{\"n\": 1.}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
 
     printf("test_number_invalid_trailing_decimal passed!\n");
@@ -548,10 +548,10 @@ void test_number_invalid_exponent_no_digits(void)
     char json1[] = "{\"n\": 1e}";
     char json2[] = "{\"n\": 1e+}";
 
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
 
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_NUMBER);
 
     printf("test_number_invalid_exponent_no_digits passed!\n");
@@ -566,10 +566,10 @@ void test_get_boolean_true(void)
     OkJsonBoolean flag;
     char json_str[] = "{\"active\": true}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_boolean(&parser, "active", &flag) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "active", 6U, &flag) == OKJ_SUCCESS);
 
     assert(flag.length == 4U);      /* "true" is 4 characters */
     assert(flag.start[0] == 't');
@@ -586,10 +586,10 @@ void test_get_boolean_false(void)
     OkJsonBoolean flag;
     char json_str[] = "{\"active\": false}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_boolean(&parser, "active", &flag) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "active", 6U, &flag) == OKJ_SUCCESS);
 
     assert(flag.length == 5U);      /* "false" is 4 characters */
     assert(flag.start[0] == 'f');
@@ -606,10 +606,10 @@ void test_invalid_boolean(void)
     OkJsonBoolean flag;
     char json_str[] = "{\"active\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_boolean(&parser, "active", &flag) != OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "active", 6U, &flag) != OKJ_SUCCESS);
 
     printf("test_invalid_boolean passed!\n");
 }
@@ -622,7 +622,7 @@ void test_get_not_found(void)
     OkJsonParser  parser;
     char json_str[] = "{\"key\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     {
@@ -630,13 +630,13 @@ void test_get_not_found(void)
         OkJsonString  tmp_str;
         OkJsonBoolean tmp_bool;
         /* Key does not exist */
-        assert(okj_get_number(&parser,  "missing", &tmp_num)  != OKJ_SUCCESS);
+        assert(okj_get_number(&parser, "missing", 7U, &tmp_num)  != OKJ_SUCCESS);
 
         /* Key exists but type is NUMBER, not STRING */
-        assert(okj_get_string(&parser,  "key",     &tmp_str)  != OKJ_SUCCESS);
+        assert(okj_get_string(&parser, "key", 3U, &tmp_str)  != OKJ_SUCCESS);
 
         /* Key exists but type is NUMBER, not BOOLEAN */
-        assert(okj_get_boolean(&parser, "key",     &tmp_bool) != OKJ_SUCCESS);
+        assert(okj_get_boolean(&parser, "key", 3U, &tmp_bool) != OKJ_SUCCESS);
     }
 
     printf("test_get_not_found passed!\n");
@@ -665,7 +665,7 @@ void test_max_tokens_exceeded(void)
     json_str[pos++] = ']';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_TOKENS_EXCEEDED);
@@ -682,7 +682,7 @@ void test_truncated_string(void)
     OkjError     result;
     char json_str[] = "{\"unclosed";  /* no closing '"' on the key */
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END); /* EOF before closing '"' */
@@ -699,10 +699,10 @@ void test_get_array_count(void)
     OkJsonArray arr;
     char json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array(&parser, "items", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "items", 5U, &arr) == OKJ_SUCCESS);
 
     assert(arr.count == 3U);   /* three numeric elements */
 
@@ -718,10 +718,10 @@ void test_get_object_count(void)
     OkJsonObject obj;
     char json_str[] = "{\"info\": {\"a\": 1, \"b\": 2}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object(&parser, "info", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "info", 4U, &obj) == OKJ_SUCCESS);
 
     assert(obj.count == 2U);   /* two key-value members */
 
@@ -767,7 +767,7 @@ void test_string_too_long(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
@@ -787,10 +787,10 @@ void test_escaped_quote_in_string(void)
     /* JSON: {"msg": "say \"hi\""} — value raw bytes: say \"hi\" (10 bytes) */
     char json_str[] = "{\"msg\": \"say \\\"hi\\\"\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "msg", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "msg", 3U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 10U);     /* s,a,y, ,\,",h,i,\," */
     assert(str.start[0] == 's');
@@ -810,10 +810,10 @@ void test_escaped_backslash_in_string(void)
     /* JSON: {"path": "a\\b"} — value raw bytes: a,\,\,b (4 bytes) */
     char json_str[] = "{\"path\": \"a\\\\b\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "path", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "path", 4U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 4U);      /* a, \, \, b */
     assert(str.start[0] == 'a');
@@ -833,10 +833,10 @@ void test_escape_newline(void)
     /* JSON: {"msg": "line1\nline2"} — 'line1\nline2' is 12 raw bytes */
     char json_str[] = "{\"msg\": \"line1\\nline2\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "msg", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "msg", 3U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 12U);     /* l,i,n,e,1,\,n,l,i,n,e,2 */
     assert(str.start[5] == '\\');  /* raw backslash byte */
@@ -857,10 +857,10 @@ void test_escape_other_single_char(void)
     /* JSON: {"msg": "\t\r\b\f\/"} — 10 raw bytes */
     char json_str[] = "{\"msg\": \"\\t\\r\\b\\f\\/\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "msg", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "msg", 3U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 10U);     /* \,t,\,r,\,b,\,f,\,/ */
     assert(str.start[0] == '\\');
@@ -881,10 +881,10 @@ void test_escape_unicode_valid(void)
     /* JSON: {"ch": "\u0041"} — 6 raw bytes in the value */
     char json_str[] = "{\"ch\": \"\\u0041\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "ch", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "ch", 2U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 6U);      /* \,u,0,0,4,1 */
     assert(str.start[0] == '\\');
@@ -903,7 +903,7 @@ void test_escape_unicode_invalid_hex(void)
     /* JSON: {"ch": "\u004G"} — 'G' is not a hex digit */
     char json_str[] = "{\"ch\": \"\\u004G\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
 
     printf("test_escape_unicode_invalid_hex passed!\n");
@@ -919,7 +919,7 @@ void test_escape_unicode_truncated(void)
     /* JSON: {"ch": "\u00"} — only 2 hex digits after \u */
     char json_str[] = "{\"ch\": \"\\u00\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
 
     printf("test_escape_unicode_truncated passed!\n");
@@ -941,10 +941,10 @@ void test_escape_unicode_surrogate_pair(void)
     /* JSON: {"emoji": "\uD83D\uDE00"} */
     char json_str[] = "{\"emoji\": \"\\uD83D\\uDE00\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "emoji", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "emoji", 5U, &str) == OKJ_SUCCESS);
 
     assert(str.length == 12U);     /* \,u,D,8,3,D,\,u,D,E,0,0 */
     assert(str.start[0] == '\\');
@@ -965,7 +965,7 @@ void test_escape_unknown(void)
     /* JSON: {"msg": "hello\qworld"} — \q is not a valid escape */
     char json_str[] = "{\"msg\": \"hello\\qworld\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_ERROR_BAD_STRING);
 
     printf("test_escape_unknown passed!\n");
@@ -981,12 +981,12 @@ void test_utf8_valid_multibyte(void)
     OkJsonString str;
     char json_str[] = "{\"s\":\"\xC3\xA9\xE6\xBC\xA2\xF0\x9F\x98\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "s", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "s", 1U, &str) == OKJ_SUCCESS);
     assert(str.length == 9U);  /* C3 A9 E6 BC A2 F0 9F 98 80 */
 
     printf("test_utf8_valid_multibyte passed!\n");
@@ -1000,7 +1000,7 @@ void test_utf8_invalid_overlong(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xC0\xAF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1016,7 +1016,7 @@ void test_utf8_invalid_surrogate(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xED\xA0\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1032,7 +1032,7 @@ void test_utf8_invalid_truncated(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xC2\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1081,7 +1081,7 @@ void test_utf8_overlong_nul_c0_80(void)
         '\0'                       /* C-string terminator for okj_init */
     };
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1134,12 +1134,12 @@ void test_backslash_flood_at_limit(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "k", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "k", 1U, &str) == OKJ_SUCCESS);
     assert(str.length == 64U);
 
     printf("test_backslash_flood_at_limit passed!\n");
@@ -1186,7 +1186,7 @@ void test_backslash_flood_one_over(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
@@ -1243,7 +1243,7 @@ void test_backslash_straddle_limit(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
@@ -1292,7 +1292,7 @@ void test_backslash_truncated_at_boundary(void)
     json_str[pos++] = '\\';      /* lone backslash — escape char is '\0' */
     json_str[pos]   = '\0';      /* NUL terminator */
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -1326,7 +1326,7 @@ void test_utf8_2byte_valid_boundary_min(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xC2\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1342,7 +1342,7 @@ void test_utf8_2byte_valid_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xDF\xBF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1358,7 +1358,7 @@ void test_utf8_2byte_b1_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xC2\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1381,7 +1381,7 @@ void test_utf8_3byte_e0_valid(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE0\xA0\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1399,7 +1399,7 @@ void test_utf8_3byte_e0_b1_below_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE0\x9F\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1415,7 +1415,7 @@ void test_utf8_3byte_e0_b1_above_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE0\xC0\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1431,7 +1431,7 @@ void test_utf8_3byte_e0_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE0\xA0\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1454,7 +1454,7 @@ void test_utf8_3byte_e1_ec_boundary_min(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE1\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1470,7 +1470,7 @@ void test_utf8_3byte_e1_ec_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xEC\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1486,7 +1486,7 @@ void test_utf8_3byte_ee_ef_boundary_min(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xEE\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1502,7 +1502,7 @@ void test_utf8_3byte_ee_ef_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xEF\xBF\xBF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1518,7 +1518,7 @@ void test_utf8_3byte_range_b1_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE1\x41\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1535,7 +1535,7 @@ void test_utf8_3byte_range_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xE1\x80\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1558,7 +1558,7 @@ void test_utf8_3byte_ed_valid(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xED\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1574,7 +1574,7 @@ void test_utf8_3byte_ed_valid_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xED\x9F\xBF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1590,7 +1590,7 @@ void test_utf8_3byte_ed_b1_below_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xED\x7F\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1606,7 +1606,7 @@ void test_utf8_3byte_ed_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xED\x80\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1631,7 +1631,7 @@ void test_utf8_4byte_f0_b1_below_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF0\x8F\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1647,7 +1647,7 @@ void test_utf8_4byte_f0_b1_above_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF0\xC0\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1663,7 +1663,7 @@ void test_utf8_4byte_f0_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF0\x90\x41\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1680,7 +1680,7 @@ void test_utf8_4byte_f0_b3_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF0\x90\x80\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1704,7 +1704,7 @@ void test_utf8_4byte_f1_f3_valid(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF1\x80\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1720,7 +1720,7 @@ void test_utf8_4byte_f1_f3_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF3\xBF\xBF\xBF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1736,7 +1736,7 @@ void test_utf8_4byte_f1_f3_b1_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF1\x41\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1753,7 +1753,7 @@ void test_utf8_4byte_f1_f3_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF1\x80\x41\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1770,7 +1770,7 @@ void test_utf8_4byte_f1_f3_b3_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF1\x80\x80\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1794,7 +1794,7 @@ void test_utf8_4byte_f4_valid(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x80\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1810,7 +1810,7 @@ void test_utf8_4byte_f4_valid_boundary_max(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x8F\xBF\xBF\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -1826,7 +1826,7 @@ void test_utf8_4byte_f4_b1_below_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x7F\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1843,7 +1843,7 @@ void test_utf8_4byte_f4_b1_above_range(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x90\x80\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1859,7 +1859,7 @@ void test_utf8_4byte_f4_b2_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x80\x41\x80\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1876,7 +1876,7 @@ void test_utf8_4byte_f4_b3_not_continuation(void)
     OkjError     result;
     char json_str[] = "{\"s\":\"\xF4\x80\x80\x41\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -1921,12 +1921,12 @@ void test_array_too_large(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);     /* 68 tokens — well within limit */
 
-    assert(okj_get_array(&parser, "items", &arr) != OKJ_SUCCESS);   /* 65 > OKJ_MAX_ARRAY_SIZE(64) */
+    assert(okj_get_array(&parser, "items", 5U, &arr) != OKJ_SUCCESS);   /* 65 > OKJ_MAX_ARRAY_SIZE(64) */
 
     printf("test_array_too_large passed!\n");
 }
@@ -1986,12 +1986,12 @@ void test_object_too_large(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);     /* 69 tokens — well within limit */
 
-    assert(okj_get_object(&parser, "data", &obj) != OKJ_SUCCESS);   /* 33 > OKJ_MAX_OBJECT_SIZE(32) */
+    assert(okj_get_object(&parser, "data", 4U, &obj) != OKJ_SUCCESS);   /* 33 > OKJ_MAX_OBJECT_SIZE(32) */
 
     printf("test_object_too_large passed!\n");
 }
@@ -2050,12 +2050,12 @@ void test_object_exactly_32_members(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);         /* 67 tokens — well within limit  */
 
-    assert(okj_get_object(&parser, "data", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "data", 4U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 32U);              /* exactly 32 == OKJ_MAX_OBJECT_SIZE */
 
     printf("test_object_exactly_32_members passed!\n");
@@ -2073,10 +2073,10 @@ void test_get_array_raw(void)
     /* "[1, 2, 3]" = 9 bytes */
     char json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array_raw(&parser, "items", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array_raw(&parser, "items", 5U, &arr) == OKJ_SUCCESS);
 
     assert(arr.count  == 3U);
     assert(arr.start[0] == '[');
@@ -2097,10 +2097,10 @@ void test_get_object_raw(void)
     /* {"a": 1} = 8 bytes */
     char json_str[] = "{\"info\": {\"a\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object_raw(&parser, "info", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object_raw(&parser, "info", 4U, &obj) == OKJ_SUCCESS);
 
     assert(obj.count  == 1U);
     assert(obj.start[0] == '{');
@@ -2117,7 +2117,7 @@ void test_count_objects(void)
     OkJsonParser parser;
     char json_str[] = "{\"a\": {\"b\": 1}, \"c\": 2}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     assert(okj_count_objects(&parser) == 2U);
@@ -2133,7 +2133,7 @@ void test_count_arrays(void)
     OkJsonParser parser;
     char json_str[] = "{\"x\": [1, 2], \"y\": [3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     assert(okj_count_arrays(&parser) == 2U);
@@ -2149,7 +2149,7 @@ void test_count_elements(void)
     OkJsonParser parser;
     char json_str[] = "{\"key\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     assert(okj_count_elements(&parser) == 3U);
@@ -2166,7 +2166,7 @@ void test_debug_print(void)
     OkJsonParser parser;
     char json_str[] = "{\"key\": 42, \"arr\": [1, 2]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
 #ifdef OK_JSON_DEBUG
@@ -2189,7 +2189,7 @@ void test_empty_object(void)
     /* Standalone empty object */
     char json1[] = "{}";
 
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
     assert(parser.token_count == 1U);          /* only the OKJ_OBJECT token */
     assert(parser.tokens[0].type == OKJ_OBJECT);
@@ -2198,10 +2198,10 @@ void test_empty_object(void)
     /* Empty object as a value — getter must return non-NULL with count 0 */
     char json2[] = "{\"k\": {}}";
 
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object(&parser, "k", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "k", 1U, &obj) == OKJ_SUCCESS);
 
     assert(obj.count == 0U);
 
@@ -2221,7 +2221,7 @@ void test_empty_array(void)
     /* Standalone empty array */
     char json1[] = "[]";
 
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
     assert(parser.token_count == 1U);          /* only the OKJ_ARRAY token */
     assert(parser.tokens[0].type == OKJ_ARRAY);
@@ -2230,10 +2230,10 @@ void test_empty_array(void)
     /* Empty array as a value — getter must return non-NULL with count 0 */
     char json2[] = "{\"k\": []}";
 
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array(&parser, "k", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "k", 1U, &arr) == OKJ_SUCCESS);
 
     assert(arr.count == 0U);
 
@@ -2253,7 +2253,7 @@ void test_nested_object(void)
     OkJsonObject obj;
     char json_str[] = "{\"outer\": {\"inner\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
     assert(parser.token_count == 5U);
 
@@ -2263,7 +2263,7 @@ void test_nested_object(void)
     assert(parser.tokens[3].type == OKJ_STRING);   /* "inner"   */
     assert(parser.tokens[4].type == OKJ_NUMBER);   /* 1         */
 
-    assert(okj_get_object(&parser, "outer", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "outer", 5U, &obj) == OKJ_SUCCESS);
 
     assert(obj.count == 1U);   /* one key-value member in the inner object */
 
@@ -2279,10 +2279,10 @@ void test_nested_array_in_object(void)
     OkJsonArray arr;
     char json_str[] = "{\"list\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array(&parser, "list", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "list", 4U, &arr) == OKJ_SUCCESS);
 
     assert(arr.count == 3U);
 
@@ -2298,10 +2298,10 @@ void test_temp_negative_number(void)
     OkJsonNumber num;
     char json_str[] = "{\"temp\": -42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "temp", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "temp", 4U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 3U);      /* '-', '4', '2' */
     assert(num.start[0] == '-');
@@ -2318,10 +2318,10 @@ void test_null_value(void)
     OkJsonToken tok;
     char json_str[] = "{\"x\": null}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_token(&parser, "x", &tok) == OKJ_SUCCESS);
+    assert(okj_get_token(&parser, "x", 1U, &tok) == OKJ_SUCCESS);
 
     assert(tok.type   == OKJ_NULL);
     assert(tok.length == 4U);      /* 'n', 'u', 'l', 'l' */
@@ -2357,7 +2357,7 @@ void test_key_exactly_64_chars(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -2393,7 +2393,7 @@ void test_key_65_chars_error(void)
     json_str[pos++] = '}';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_STR_LEN_EXCEEDED);
@@ -2438,7 +2438,7 @@ void test_deeply_nested_at_limit(void)
 
     json16[pos] = '\0';
 
-    okj_init(&parser, json16);
+    okj_init(&parser, json16, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -2467,7 +2467,7 @@ void test_deeply_nested_at_limit(void)
 
     json17[pos] = '\0';
 
-    okj_init(&parser, json17);
+    okj_init(&parser, json17, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_DEPTH_EXCEEDED);
@@ -2500,7 +2500,7 @@ void test_max_json_len_exceeded(void)
     json_str[pos++] = ']';
     json_str[pos]   = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_JSON_LEN_EXCEEDED);
@@ -2544,7 +2544,7 @@ void test_max_json_len_boundary(void)
 
     json_buf[pos] = '\0'; /* pos == 4096 == OKJ_MAX_JSON_LEN */
 
-    okj_init(&parser, json_buf);
+    okj_init(&parser, json_buf, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -2567,7 +2567,7 @@ void test_max_json_len_boundary(void)
 
     json_buf[pos] = '\0'; /* pos == 4097 == OKJ_MAX_JSON_LEN + 1 */
 
-    okj_init(&parser, json_buf);
+    okj_init(&parser, json_buf, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_JSON_LEN_EXCEEDED);
@@ -2599,20 +2599,20 @@ void test_null_pointer_safety(void)
 
     /* --- okj_init(NULL, json) -------------------------------------------- */
     /* Must return immediately without touching any memory. */
-    okj_init(NULL, json_str);
+    okj_init(NULL, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     /* --- okj_init(parser, NULL) ------------------------------------------ */
     /* Prime the parser with known values, then attempt a re-init with a NULL
      * JSON string.  The call must be a no-op: the parser fields must remain
      * exactly as set by the prior okj_init() call. */
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     {
         uint16_t saved_token_count = parser.token_count;
         uint16_t saved_depth       = parser.depth;
 
-        okj_init(&parser, NULL);
+        okj_init(&parser, NULL, 0U);
 
         assert(parser.token_count == saved_token_count);
         assert(parser.depth       == saved_depth);
@@ -2641,7 +2641,7 @@ void test_truncated_backslash_at_eof(void)
     /* JSON: {"k": "val\<EOF>} — backslash is the last byte before NUL */
     char json_str[] = "{\"k\": \"val\\";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -2661,10 +2661,10 @@ void test_copy_string_basic(void)
 
     char json_str[] = "{\"city\": \"Paris\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "city", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "city", 4U, &str) == OKJ_SUCCESS);
 
     copied = okj_copy_string(&str, buf, (uint16_t)sizeof(buf));
 
@@ -2688,10 +2688,10 @@ void test_copy_string_null_terminated(void)
 
     char json_str[] = "{\"city\": \"Paris\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "city", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "city", 4U, &str) == OKJ_SUCCESS);
 
     copied = okj_copy_string(&str, buf, (uint16_t)sizeof(buf));
 
@@ -2713,10 +2713,10 @@ void test_copy_string_truncation(void)
 
     char json_str[] = "{\"word\": \"Hello\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "word", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "word", 4U, &str) == OKJ_SUCCESS);
     assert(str.length == 5U);
 
     copied = okj_copy_string(&str, buf, (uint16_t)sizeof(buf));
@@ -2742,10 +2742,10 @@ void test_copy_string_one_byte_buf(void)
 
     char json_str[] = "{\"x\": \"Hello\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "x", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "x", 1U, &str) == OKJ_SUCCESS);
     assert(str.length == 5U);
 
     /* Sentinel: fill with a non-zero value so we can confirm it was overwritten. */
@@ -2771,10 +2771,10 @@ void test_copy_string_exact_fit(void)
 
     char json_str[] = "{\"k\": \"Hi\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "k", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "k", 1U, &str) == OKJ_SUCCESS);
     assert(str.length == 2U);
 
     /* buf_size == length + 1 == 3: exact fit */
@@ -2799,10 +2799,10 @@ void test_copy_string_null_inputs(void)
 
     char json_str[] = "{\"x\": \"abc\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "x", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "x", 1U, &str) == OKJ_SUCCESS);
 
     /* NULL str pointer */
     result = okj_copy_string(NULL, buf, (uint16_t)sizeof(buf));
@@ -2840,11 +2840,11 @@ void test_find_key_over_max_len(void)
     }
     long_key[65] = '\0';
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* The long key cannot match the 1-char stored key; must return failure. */
-    assert(okj_get_string(&parser, long_key, &str) != OKJ_SUCCESS);
+    assert(okj_get_string(&parser, long_key, 65U, &str) != OKJ_SUCCESS);
 
     printf("test_find_key_over_max_len passed!\n");
 }
@@ -2858,7 +2858,7 @@ void test_depth_stack_bracket_mismatch_obj(void)
     OkjError     result;
     char json_str[] = "{\"k\": 1]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BRACKET_MISMATCH);
@@ -2875,7 +2875,7 @@ void test_depth_stack_bracket_mismatch_arr(void)
     OkjError     result;
     char json_str[] = "[1, 2}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BRACKET_MISMATCH);
@@ -2893,7 +2893,7 @@ void test_depth_stack_extra_close_brace(void)
     OkjError     result;
     char json_str[] = "}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -2911,7 +2911,7 @@ void test_depth_stack_extra_close_bracket(void)
     OkjError     result;
     char json_str[] = "]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -2928,7 +2928,7 @@ void test_depth_stack_unclosed_object(void)
     OkjError     result;
     char json_str[] = "{\"key\": 42";   /* missing closing '}' */
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -2945,7 +2945,7 @@ void test_depth_stack_unclosed_array(void)
     OkjError     result;
     char json_str[] = "[1, 2, 3";   /* missing closing ']' */
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -2962,7 +2962,7 @@ void test_depth_stack_mixed_nesting(void)
     OkjError     result;
     char json_str[] = "{\"arr\": [{\"x\": 1}]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3003,7 +3003,7 @@ void test_depth_stack_alternating_unwind(void)
     char json_str[] =
         "{\"a\":[{\"b\":[{\"c\":[{\"d\":[{\"e\":[{\"f\":[{\"g\":[{\"h\":1}]}]}]}]}]}]}]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     /* The parser must accept the payload without any bracket mismatch. */
@@ -3030,7 +3030,7 @@ void test_trailing_whitespace_after_object(void)
     OkjError     result;
     char json_str[] = "{\"x\": 1}   ";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3047,7 +3047,7 @@ void test_trailing_garbage_after_object(void)
     OkjError     result;
     char json_str[] = "{\"x\": 1} garbage";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3064,7 +3064,7 @@ void test_trailing_garbage_after_array(void)
     OkjError     result;
     char json_str[] = "[1, 2, 3] x";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3081,7 +3081,7 @@ void test_trailing_garbage_after_primitive(void)
     OkjError     result;
     char json_str[] = "42 extra";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3098,7 +3098,7 @@ void test_two_top_level_primitives(void)
     OkjError     result;
     char json_str[] = "true false";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3114,7 +3114,7 @@ void test_two_top_level_objects(void)
     OkjError     result;
     char json_str[] = "{} {}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3136,7 +3136,7 @@ void test_trailing_comma_in_object(void)
     OkjError     result;
     char json_str[] = "{\"a\": 1,}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3153,7 +3153,7 @@ void test_trailing_comma_in_array(void)
     OkjError     result;
     char json_str[] = "[1, 2,]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3170,7 +3170,7 @@ void test_number_as_object_key(void)
     OkjError     result;
     char json_str[] = "{42: \"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3186,7 +3186,7 @@ void test_boolean_as_object_key(void)
     OkjError     result;
     char json_str[] = "{true: \"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3202,7 +3202,7 @@ void test_null_as_object_key(void)
     OkjError     result;
     char json_str[] = "{null: \"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3219,7 +3219,7 @@ void test_missing_colon(void)
     OkjError     result;
     char json_str[] = "{\"a\" \"b\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3235,7 +3235,7 @@ void test_colon_without_key(void)
     OkjError     result;
     char json_str[] = "{: \"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3251,7 +3251,7 @@ void test_double_colon(void)
     OkjError     result;
     char json_str[] = "{\"a\":: 1}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3268,7 +3268,7 @@ void test_empty_input(void)
     OkjError     result;
     char json_str[] = "";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -3285,7 +3285,7 @@ void test_whitespace_only_input(void)
     OkjError     result;
     char json_str[] = "   \t\n\r  ";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_UNEXPECTED_END);
@@ -3304,15 +3304,15 @@ void test_keyword_no_boundary(void)
     char json2[] = "{\"x\": falsefalse}";
     char json3[] = "{\"x\": nullnull}";
 
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     result = okj_parse(&parser);
     assert(result == OKJ_ERROR_SYNTAX);
 
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     result = okj_parse(&parser);
     assert(result == OKJ_ERROR_SYNTAX);
 
-    okj_init(&parser, json3);
+    okj_init(&parser, json3, (uint16_t)(sizeof(json3) - 1U));
     result = okj_parse(&parser);
     assert(result == OKJ_ERROR_SYNTAX);
 
@@ -3328,7 +3328,7 @@ void test_value_after_value_in_object(void)
     OkjError     result;
     char json_str[] = "{\"a\": 1 2}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3344,7 +3344,7 @@ void test_comma_at_start_of_array(void)
     OkjError     result;
     char json_str[] = "[,1]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3360,7 +3360,7 @@ void test_comma_at_start_of_object(void)
     OkjError     result;
     char json_str[] = "{,\"a\": 1}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -3377,7 +3377,7 @@ void test_top_level_number(void)
     OkjError      result;
     char json_str[] = "42";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3395,7 +3395,7 @@ void test_top_level_string(void)
     OkjError      result;
     char json_str[] = "\"hello\"";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3414,14 +3414,14 @@ void test_top_level_boolean(void)
     char json1[] = "true";
     char json2[] = "false";
 
-    okj_init(&parser, json1);
+    okj_init(&parser, json1, (uint16_t)(sizeof(json1) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
     assert(parser.token_count == 1U);
     assert(parser.tokens[0].type == OKJ_BOOLEAN);
 
-    okj_init(&parser, json2);
+    okj_init(&parser, json2, (uint16_t)(sizeof(json2) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3439,7 +3439,7 @@ void test_top_level_null(void)
     OkjError      result;
     char json_str[] = "null";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_SUCCESS);
@@ -3508,7 +3508,7 @@ void test_iot_sensor_json(void)
         "}"
         "}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Token budget */
@@ -3521,7 +3521,7 @@ void test_iot_sensor_json(void)
     assert(okj_count_arrays(&parser)  == 3U);
 
     /* --- top-level string fields --- */
-    assert(okj_get_string(&parser, "deviceId", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "deviceId", 8U, &str) == OKJ_SUCCESS);
     assert(str.length == 13U);   /* "sens-a83-992b" */
     assert(str.start[0] == 's');
 
@@ -3530,67 +3530,67 @@ void test_iot_sensor_json(void)
     assert(buf[0] == 's');
     assert(buf[13] == '\0');
 
-    assert(okj_get_string(&parser, "deviceModel", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "deviceModel", 11U, &str) == OKJ_SUCCESS);
     assert(str.length == 11U);   /* "TempSense-X" */
     assert(str.start[0] == 'T');
 
     /* --- boolean fields --- */
-    assert(okj_get_boolean(&parser, "isActive", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "isActive", 8U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 't');   /* true */
 
-    assert(okj_get_boolean(&parser, "requiresMaintenance", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "requiresMaintenance", 19U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 'f');   /* false */
 
     /* --- null field --- */
-    assert(okj_get_token(&parser, "assignedLocation", &tok) == OKJ_SUCCESS);
+    assert(okj_get_token(&parser, "assignedLocation", 16U, &tok) == OKJ_SUCCESS);
     assert(tok.type   == OKJ_NULL);
     assert(tok.length == 4U);   /* 'n','u','l','l' */
 
     /* --- numeric fields --- */
-    assert(okj_get_number(&parser, "batteryLevel", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "batteryLevel", 12U, &num) == OKJ_SUCCESS);
     assert(num.length == 4U);   /* "87.5" */
 
-    assert(okj_get_number(&parser, "uptimeSeconds", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "uptimeSeconds", 13U, &num) == OKJ_SUCCESS);
     assert(num.length == 6U);   /* "145920" */
 
-    assert(okj_get_number(&parser, "signalStrength", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "signalStrength", 14U, &num) == OKJ_SUCCESS);
     assert(num.start[0] == '-');
     assert(num.length == 3U);   /* "-65" */
 
     /* --- nested object: networkFeatures --- */
-    assert(okj_get_object(&parser, "networkFeatures", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "networkFeatures", 15U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 4U);   /* wifiEnabled, bluetoothEnabled, ipv4Address, macAddress */
 
-    assert(okj_get_string(&parser, "ipv4Address", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "ipv4Address", 11U, &str) == OKJ_SUCCESS);
     assert(str.length == 13U);   /* "192.168.4.105" */
 
-    assert(okj_get_string(&parser, "macAddress", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "macAddress", 10U, &str) == OKJ_SUCCESS);
     assert(str.length == 17U);   /* "00:1B:44:11:3A:B7" */
 
     /* --- array of numbers: recentTemperatures --- */
-    assert(okj_get_array(&parser, "recentTemperatures", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "recentTemperatures", 18U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 4U);
 
     /* --- array of strings: systemTags --- */
-    assert(okj_get_array(&parser, "systemTags", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "systemTags", 10U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 3U);
 
     /* --- nested object: calibrationData --- */
-    assert(okj_get_object(&parser, "calibrationData", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "calibrationData", 15U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 4U);   /* baseOffset, scaleFactor, lastRunTimestamp, pendingErrorCodes */
 
-    assert(okj_get_number(&parser, "baseOffset", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "baseOffset", 10U, &num) == OKJ_SUCCESS);
     assert(num.start[0] == '-');
     assert(num.length == 5U);   /* "-0.45" */
 
-    assert(okj_get_number(&parser, "scaleFactor", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "scaleFactor", 11U, &num) == OKJ_SUCCESS);
     assert(num.length == 7U);   /* "1.002e1" */
 
-    assert(okj_get_string(&parser, "lastRunTimestamp", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "lastRunTimestamp", 16U, &str) == OKJ_SUCCESS);
     assert(str.length == 20U);   /* "2026-03-10T08:15:30Z" */
 
     /* --- empty array: pendingErrorCodes --- */
-    assert(okj_get_array(&parser, "pendingErrorCodes", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "pendingErrorCodes", 17U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 0U);
 
     printf("test_iot_sensor_json passed!\n");
@@ -3663,7 +3663,7 @@ void test_user_data_json(void)
         "}"
         "]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Token budget */
@@ -3675,18 +3675,18 @@ void test_user_data_json(void)
     assert(okj_count_arrays(&parser)  == 5U);
 
     /* --- first user: string fields --- */
-    assert(okj_get_string(&parser, "_id", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "_id", 3U, &str) == OKJ_SUCCESS);
     assert(str.length == 24U);   /* "69b18062f9d860aa282072e7" */
     assert(str.start[0] == '6');
 
-    assert(okj_get_string(&parser, "guid", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "guid", 4U, &str) == OKJ_SUCCESS);
     assert(str.length == 36U);   /* "695ef86b-6392-448a-a346-68e174770d11" */
 
-    assert(okj_get_string(&parser, "balance", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "balance", 7U, &str) == OKJ_SUCCESS);
     assert(str.length == 9U);    /* "$2,992.34" */
     assert(str.start[0] == '$');
 
-    assert(okj_get_string(&parser, "name", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "name", 4U, &str) == OKJ_SUCCESS);
     assert(str.length == 17U);   /* "Hamilton Mcdowell" */
     assert(str.start[0] == 'H');
 
@@ -3695,41 +3695,41 @@ void test_user_data_json(void)
     assert(buf[0]  == 'H');
     assert(buf[17] == '\0');
 
-    assert(okj_get_string(&parser, "company", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "company", 7U, &str) == OKJ_SUCCESS);
     assert(str.length == 6U);    /* "EXPOSA" */
 
-    assert(okj_get_string(&parser, "email", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "email", 5U, &str) == OKJ_SUCCESS);
     assert(str.length == 19U);   /* "hamilton@exposa.com" */
 
-    assert(okj_get_string(&parser, "about", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "about", 5U, &str) == OKJ_SUCCESS);
     assert(str.length == 49U);   /* "Consectetur adipisicing ipsum fugiat aute aliqua." */
 
     /* --- first user: boolean field --- */
-    assert(okj_get_boolean(&parser, "isActive", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "isActive", 8U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 'f');   /* false */
     assert(bval.length   == 5U);
 
     /* --- first user: numeric fields --- */
-    assert(okj_get_number(&parser, "index", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "index", 5U, &num) == OKJ_SUCCESS);
     assert(num.length == 1U);    /* "0" */
 
-    assert(okj_get_number(&parser, "age", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "age", 3U, &num) == OKJ_SUCCESS);
     assert(num.length == 2U);    /* "33" */
 
-    assert(okj_get_number(&parser, "latitude", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "latitude", 8U, &num) == OKJ_SUCCESS);
     assert(num.start[0] == '-');
     assert(num.length == 10U);   /* "-63.370226" */
 
-    assert(okj_get_number(&parser, "longitude", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "longitude", 9U, &num) == OKJ_SUCCESS);
     assert(num.start[0] == '-');
     assert(num.length == 10U);   /* "-97.934255" */
 
     /* --- first user: tags array --- */
-    assert(okj_get_array(&parser, "tags", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "tags", 4U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 3U);
 
     /* --- first user: friends array --- */
-    assert(okj_get_array(&parser, "friends", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "friends", 7U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 1U);
 
     printf("test_user_data_json passed!\n");
@@ -3794,7 +3794,7 @@ void test_deeply_nested_valid_json(void)
           "}"
         "}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Token budget */
@@ -3810,22 +3810,22 @@ void test_deeply_nested_valid_json(void)
     assert(okj_count_arrays(&parser)  == 1U);
 
     /* Nested object lookups — each single-member object */
-    assert(okj_get_object(&parser, "region", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "region", 6U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 1U);
 
-    assert(okj_get_object(&parser, "component", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "component", 9U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 1U);   /* sole member: settings */
 
     /* settings array contains exactly one element */
-    assert(okj_get_array(&parser, "settings", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "settings", 8U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 1U);
 
     /* Leaf values inside settings[0] */
-    assert(okj_get_number(&parser, "id", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "id", 2U, &num) == OKJ_SUCCESS);
     assert(num.length == 2U);   /* "42" */
     assert(num.start[0] == '4');
 
-    assert(okj_get_boolean(&parser, "active", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "active", 6U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 't');   /* true */
 
     printf("test_deeply_nested_valid_json passed!\n");
@@ -3923,7 +3923,7 @@ void test_upper_limits_json(void)
         "\"k16\":16"
         "}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Token budget: 125 tokens out of OKJ_MAX_TOKENS (128) */
@@ -3938,55 +3938,55 @@ void test_upper_limits_json(void)
     assert(okj_count_arrays(&parser)  == 1U);
 
     /* --- max-length string value (63 bytes, one below the 64-byte ceiling) --- */
-    assert(okj_get_string(&parser, "maxLengthStringTest63Chrs", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "maxLengthStringTest63Chrs", 25U, &str) == OKJ_SUCCESS);
     assert(str.length == 63U);
     assert(str.start[0]  == '1');
     assert(str.start[62] == '3');   /* last digit of the 63-char sequence */
 
     /* --- large array (60 elements, near OKJ_MAX_ARRAY_SIZE of 64) --- */
-    assert(okj_get_array(&parser, "largeArrayTest", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "largeArrayTest", 14U, &arr) == OKJ_SUCCESS);
     assert(arr.count == 60U);
 
     /* --- deep nesting (14 levels, two below OKJ_MAX_DEPTH of 16) --- */
-    assert(okj_get_object(&parser, "deepNestingTest", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "deepNestingTest", 15U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 1U);   /* single member: d3 */
 
-    assert(okj_get_object(&parser, "d3", &obj) == OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "d3", 2U, &obj) == OKJ_SUCCESS);
     assert(obj.count == 1U);   /* single member: d4 */
 
     /* Leaf string at the deepest level */
-    assert(okj_get_string(&parser, "d15", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "d15", 3U, &str) == OKJ_SUCCESS);
     assert(str.length == 3U);   /* "max" */
     assert(str.start[0] == 'm');
 
     /* --- flat primitive fields: booleans --- */
-    assert(okj_get_boolean(&parser, "k1", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "k1", 2U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 't');   /* true */
     assert(bval.length   == 4U);
 
-    assert(okj_get_boolean(&parser, "k2", &bval) == OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "k2", 2U, &bval) == OKJ_SUCCESS);
     assert(bval.start[0] == 'f');   /* false */
     assert(bval.length   == 5U);
 
     /* --- null --- */
-    assert(okj_get_token(&parser, "k3", &tok) == OKJ_SUCCESS);
+    assert(okj_get_token(&parser, "k3", 2U, &tok) == OKJ_SUCCESS);
     assert(tok.type   == OKJ_NULL);
     assert(tok.length == 4U);   /* "null" */
 
     /* --- integers --- */
-    assert(okj_get_number(&parser, "k4", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "k4", 2U, &num) == OKJ_SUCCESS);
     assert(num.length == 1U);   /* "4" */
 
-    assert(okj_get_number(&parser, "k16", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "k16", 3U, &num) == OKJ_SUCCESS);
     assert(num.length == 2U);   /* "16" */
 
     /* --- float --- */
-    assert(okj_get_number(&parser, "k5", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "k5", 2U, &num) == OKJ_SUCCESS);
     assert(num.length == 3U);   /* "5.5" */
     assert(num.start[1] == '.');
 
     /* --- string primitive --- */
-    assert(okj_get_string(&parser, "k6", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "k6", 2U, &str) == OKJ_SUCCESS);
     assert(str.length == 3U);   /* "six" */
     assert(str.start[0] == 's');
 
@@ -4002,13 +4002,14 @@ void test_null_byte_in_string_value(void)
      * the full byte sequence — including the null byte at offset 12 — is
      * preserved in memory.
      *
-     * Payload (18 bytes + final NUL):
+     * Payload (17 content bytes, json_len = 17):
      *   { " k e y " :   " v a l \0 u e " }
-     *   0 1 2 3 4 5 6 7 8 9 ...          17
+     *   0 1 2 3 4 5 6 7 8 9 ...          16
      *
-     * The parser's string-scan loop exits on '\0' (its loop condition checks
-     * != '\0'), so it never reaches the closing '"'.  The post-loop check
-     * then sees '\0' instead of '"' and returns OKJ_ERROR_UNEXPECTED_END. */
+     * With explicit length, the parser does not treat '\0' as end-of-input.
+     * Instead the string-scan loop continues and the '\0' byte (0x00 < 0x20)
+     * is caught by the control-character rejection check, returning
+     * OKJ_ERROR_BAD_STRING. */
 
     OkJsonParser parser;
     OkjError     result;
@@ -4018,13 +4019,13 @@ void test_null_byte_in_string_value(void)
         '{', '"', 'k', 'e', 'y', '"', ':', ' ', '"', 'v', 'a', 'l',
         '\0',           /* injected null byte inside the value string */
         'u', 'e', '"', '}',
-        '\0'            /* actual C-string terminator for okj_init */
+        '\0'            /* array terminator (not parsed; json_len = 17) */
     };
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
-    assert(result == OKJ_ERROR_UNEXPECTED_END);
+    assert(result == OKJ_ERROR_BAD_STRING);
 
     printf("test_null_byte_in_string_value passed!\n");
 }
@@ -4041,10 +4042,10 @@ void test_duplicate_key_first_match_wins(void)
     OkJsonNumber num;
     char json_str[] = "{\"x\": 10, \"x\": 99}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "x", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "x", 1U, &num) == OKJ_SUCCESS);
 
     assert(num.length == 2U);   /* "10" is 2 characters */
     assert(num.start[0] == '1');
@@ -4068,7 +4069,7 @@ void test_empty_string_key(void)
     OkJsonString str;
     char json_str[] = "{\"\":\"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Three tokens: OKJ_OBJECT container, empty-string key, string value. */
@@ -4080,7 +4081,7 @@ void test_empty_string_key(void)
     assert(parser.tokens[1].length == 0U);
 
     /* Value lookup via the empty-string key must succeed. */
-    assert(okj_get_string(&parser, "", &str) == OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "", 0U, &str) == OKJ_SUCCESS);
 
     /* The value is the 5-character string "value". */
     assert(str.length    == 5U);
@@ -4139,14 +4140,14 @@ void test_number_large_near_json_limit(void)
     json_buf[pos++] = '}';
     json_buf[pos]   = '\0'; /* pos == 4096 == OKJ_MAX_JSON_LEN */
 
-    okj_init(&parser, json_buf);
+    okj_init(&parser, json_buf, pos);
     result = okj_parse(&parser);
 
     /* The JSON is exactly OKJ_MAX_JSON_LEN bytes and syntactically valid,
      * so the parser must accept it. */
     assert(result == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "n", &num) == OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "n", 1U, &num) == OKJ_SUCCESS);
 
     /* The number token must be found and its length must equal the full
      * 4089-character digit sequence without uint16_t truncation. */
@@ -4184,7 +4185,7 @@ void test_rfc8259_all_whitespace_between_tokens(void)
     char json_str[] =
         "\r\n\t [\r\n\t 1\r\n\t ,\r\n\t 2\r\n\t ,\r\n\t 3\r\n\t ]\r\n\t ";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     /* The JSON is syntactically valid so the parser must accept it. */
@@ -4225,7 +4226,7 @@ void test_control_char_tab_in_string_value(void)
     /* {"s":"val\x09ue"} — literal tab byte inside the string value */
     char json_str[] = "{\"s\":\"val\x09ue\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -4265,7 +4266,7 @@ void test_control_char_lf_in_string_value(void)
         '\0'            /* C-string terminator for okj_init */
     };
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_BAD_STRING);
@@ -4300,14 +4301,14 @@ void test_quoted_string_spoofing(void)
 
     char json_str[] = "{\"tricky\": [\"{\", \"}\", \"[\", \"]\", \",\"]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
     /* Total token count must equal real tokens only – the fake structural
      * characters inside the strings must not inflate this number. */
     assert(okj_count_elements(&parser) == 8U);
 
-    assert(okj_get_array_raw(&parser, "tricky", &arr) == OKJ_SUCCESS);
+    assert(okj_get_array_raw(&parser, "tricky", 6U, &arr) == OKJ_SUCCESS);
 
     assert(arr.start[0] == '[');
 
@@ -4402,7 +4403,7 @@ void test_okj_get_number_null_parser(void)
 
     OkJsonNumber num;
 
-    assert(okj_get_number(NULL, "age", &num) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_number(NULL, "age", 3U, &num) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_number_null_parser passed!\n");
 }
@@ -4416,10 +4417,10 @@ void test_okj_get_number_null_key(void)
     OkJsonNumber num;
     char          json_str[] = "{\"age\": 30}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, NULL, &num) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_number(&parser, NULL, 0U, &num) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_number_null_key passed!\n");
 }
@@ -4431,7 +4432,7 @@ void test_okj_get_string_null_parser(void)
 
     OkJsonString str;
 
-    assert(okj_get_string(NULL, "name", &str) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_string(NULL, "name", 4U, &str) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_string_null_parser passed!\n");
 }
@@ -4445,10 +4446,10 @@ void test_okj_get_string_null_key(void)
     OkJsonString str;
     char          json_str[] = "{\"name\": \"Alice\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, NULL, &str) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_string(&parser, NULL, 0U, &str) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_string_null_key passed!\n");
 }
@@ -4460,7 +4461,7 @@ void test_okj_get_boolean_null_parser(void)
 
     OkJsonBoolean flag;
 
-    assert(okj_get_boolean(NULL, "active", &flag) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_boolean(NULL, "active", 6U, &flag) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_boolean_null_parser passed!\n");
 }
@@ -4474,10 +4475,10 @@ void test_okj_get_boolean_null_key(void)
     OkJsonBoolean flag;
     char           json_str[] = "{\"active\": true}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_boolean(&parser, NULL, &flag) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_boolean(&parser, NULL, 0U, &flag) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_boolean_null_key passed!\n");
 }
@@ -4489,7 +4490,7 @@ void test_okj_get_array_null_parser(void)
 
     OkJsonArray arr;
 
-    assert(okj_get_array(NULL, "items", &arr) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_array(NULL, "items", 5U, &arr) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_array_null_parser passed!\n");
 }
@@ -4503,10 +4504,10 @@ void test_okj_get_array_null_key(void)
     OkJsonArray arr;
     char          json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array(&parser, NULL, &arr) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_array(&parser, NULL, 0U, &arr) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_array_null_key passed!\n");
 }
@@ -4518,7 +4519,7 @@ void test_okj_get_object_null_parser(void)
 
     OkJsonObject obj;
 
-    assert(okj_get_object(NULL, "info", &obj) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_object(NULL, "info", 4U, &obj) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_object_null_parser passed!\n");
 }
@@ -4532,10 +4533,10 @@ void test_okj_get_object_null_key(void)
     OkJsonObject obj;
     char          json_str[] = "{\"info\": {\"x\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object(&parser, NULL, &obj) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_object(&parser, NULL, 0U, &obj) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_object_null_key passed!\n");
 }
@@ -4547,7 +4548,7 @@ void test_okj_get_token_null_parser(void)
 
     OkJsonToken tok;
 
-    assert(okj_get_token(NULL, "key", &tok) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_token(NULL, "key", 3U, &tok) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_token_null_parser passed!\n");
 }
@@ -4561,10 +4562,10 @@ void test_okj_get_token_null_key(void)
     OkJsonToken tok;
     char          json_str[] = "{\"key\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_token(&parser, NULL, &tok) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_token(&parser, NULL, 0U, &tok) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_token_null_key passed!\n");
 }
@@ -4576,7 +4577,7 @@ void test_okj_get_array_raw_null_parser(void)
 
     OkJsonArray arr;
 
-    assert(okj_get_array_raw(NULL, "items", &arr) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_array_raw(NULL, "items", 5U, &arr) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_array_raw_null_parser passed!\n");
 }
@@ -4590,10 +4591,10 @@ void test_okj_get_array_raw_null_key(void)
     OkJsonArray arr;
     char          json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array_raw(&parser, NULL, &arr) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_array_raw(&parser, NULL, 0U, &arr) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_array_raw_null_key passed!\n");
 }
@@ -4605,7 +4606,7 @@ void test_okj_get_object_raw_null_parser(void)
 
     OkJsonObject obj;
 
-    assert(okj_get_object_raw(NULL, "info", &obj) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_object_raw(NULL, "info", 4U, &obj) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_object_raw_null_parser passed!\n");
 }
@@ -4619,10 +4620,10 @@ void test_okj_get_object_raw_null_key(void)
     OkJsonObject obj;
     char          json_str[] = "{\"info\": {\"x\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object_raw(&parser, NULL, &obj) == OKJ_ERROR_BAD_POINTER);
+    assert(okj_get_object_raw(&parser, NULL, 0U, &obj) == OKJ_ERROR_BAD_POINTER);
 
     printf("test_okj_get_object_raw_null_key passed!\n");
 }
@@ -4637,10 +4638,10 @@ void test_okj_get_string_key_not_found(void)
     OkJsonString str;
     char          json_str[] = "{\"name\": \"Alice\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_string(&parser, "missing", &str) != OKJ_SUCCESS);
+    assert(okj_get_string(&parser, "missing", 7U, &str) != OKJ_SUCCESS);
 
     printf("test_okj_get_string_key_not_found passed!\n");
 }
@@ -4655,10 +4656,10 @@ void test_okj_get_number_key_not_found(void)
     OkJsonNumber num;
     char          json_str[] = "{\"age\": 30}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_number(&parser, "missing", &num) != OKJ_SUCCESS);
+    assert(okj_get_number(&parser, "missing", 7U, &num) != OKJ_SUCCESS);
 
     printf("test_okj_get_number_key_not_found passed!\n");
 }
@@ -4673,10 +4674,10 @@ void test_okj_get_boolean_key_not_found(void)
     OkJsonBoolean flag;
     char           json_str[] = "{\"active\": true}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_boolean(&parser, "missing", &flag) != OKJ_SUCCESS);
+    assert(okj_get_boolean(&parser, "missing", 7U, &flag) != OKJ_SUCCESS);
 
     printf("test_okj_get_boolean_key_not_found passed!\n");
 }
@@ -4691,10 +4692,10 @@ void test_okj_get_array_key_not_found(void)
     OkJsonArray arr;
     char          json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array(&parser, "missing", &arr) != OKJ_SUCCESS);
+    assert(okj_get_array(&parser, "missing", 7U, &arr) != OKJ_SUCCESS);
 
     printf("test_okj_get_array_key_not_found passed!\n");
 }
@@ -4709,10 +4710,10 @@ void test_okj_get_object_key_not_found(void)
     OkJsonObject obj;
     char          json_str[] = "{\"info\": {\"x\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object(&parser, "missing", &obj) != OKJ_SUCCESS);
+    assert(okj_get_object(&parser, "missing", 7U, &obj) != OKJ_SUCCESS);
 
     printf("test_okj_get_object_key_not_found passed!\n");
 }
@@ -4727,10 +4728,10 @@ void test_okj_get_token_key_not_found(void)
     OkJsonToken tok;
     char          json_str[] = "{\"key\": 42}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_token(&parser, "missing", &tok) != OKJ_SUCCESS);
+    assert(okj_get_token(&parser, "missing", 7U, &tok) != OKJ_SUCCESS);
 
     printf("test_okj_get_token_key_not_found passed!\n");
 }
@@ -4745,10 +4746,10 @@ void test_okj_get_array_raw_key_not_found(void)
     OkJsonArray arr;
     char          json_str[] = "{\"items\": [1, 2, 3]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_array_raw(&parser, "missing", &arr) != OKJ_SUCCESS);
+    assert(okj_get_array_raw(&parser, "missing", 7U, &arr) != OKJ_SUCCESS);
 
     printf("test_okj_get_array_raw_key_not_found passed!\n");
 }
@@ -4763,10 +4764,10 @@ void test_okj_get_object_raw_key_not_found(void)
     OkJsonObject obj;
     char          json_str[] = "{\"info\": {\"x\": 1}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     assert(okj_parse(&parser) == OKJ_SUCCESS);
 
-    assert(okj_get_object_raw(&parser, "missing", &obj) != OKJ_SUCCESS);
+    assert(okj_get_object_raw(&parser, "missing", 7U, &obj) != OKJ_SUCCESS);
 
     printf("test_okj_get_object_raw_key_not_found passed!\n");
 }
@@ -4870,7 +4871,7 @@ void test_open_brace_wrong_context(void)
     OkjError     result;
     char json_str[] = "{\"a\":1{\"b\":2}}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -4888,7 +4889,7 @@ void test_open_bracket_wrong_context(void)
     OkjError     result;
     char json_str[] = "{\"a\":1[1,2]}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);
@@ -4927,7 +4928,7 @@ void test_array_max_depth_exceeded(void)
 
     json[pos] = '\0';
 
-    okj_init(&parser, json);
+    okj_init(&parser, json, pos);
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_MAX_DEPTH_EXCEEDED);
@@ -4947,7 +4948,7 @@ void test_close_brace_depth_zero(void)
     OkjError     result;
     char         json_str[] = "}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     /* Override context so the context guard at line 593 is passed. */
     parser.context = OKJ_CTX_WANT_KEY_OR_CLOSE;
@@ -4970,7 +4971,7 @@ void test_close_bracket_depth_zero(void)
     OkjError     result;
     char         json_str[] = "]";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     parser.context = OKJ_CTX_WANT_VALUE_OR_CLOSE;
     parser.depth   = 0U;
@@ -4992,7 +4993,7 @@ void test_comma_outside_container(void)
     OkjError     result;
     char         json_str[] = ",";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
 
     parser.context = OKJ_CTX_WANT_SEP_OR_CLOSE;
     parser.depth   = 0U;
@@ -5014,7 +5015,7 @@ void test_false_as_object_key(void)
     OkjError     result;
     char json_str[] = "{false: \"value\"}";
 
-    okj_init(&parser, json_str);
+    okj_init(&parser, json_str, (uint16_t)(sizeof(json_str) - 1U));
     result = okj_parse(&parser);
 
     assert(result == OKJ_ERROR_SYNTAX);

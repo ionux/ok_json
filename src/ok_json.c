@@ -902,8 +902,6 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         }
         else if ((okj_is_digit(c)) || (c == '-'))
         {
-            uint8_t number_ok = 1U;
-
             /* Numbers are only valid in value positions, never as object keys. */
             if ((parser->context != OKJ_CTX_WANT_VALUE) &&
                 (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
@@ -917,6 +915,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 tok->start = &parser->json[parser->position];
 
                 uint16_t start_pos  = parser->position;
+
+                uint8_t number_ok = 1U;
 
                 /* Step 1: optional leading minus */
                 if (c == '-')

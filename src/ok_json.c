@@ -1219,9 +1219,18 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
     {
         uint16_t key_len = 0U;
 
-        while ((key_len <= OKJ_MAX_STRING_LEN) && (key[key_len] != '\0'))
+        uint8_t end_of_string = 0U;
+
+        while ((key_len <= OKJ_MAX_STRING_LEN) && (end_of_string != 1U))
         {
-            key_len++;
+            if (key[key_len] == '\0')
+            {
+                end_of_string = 1U;
+            }
+            else
+            {
+                key_len++;
+            }
         }
 
         uint16_t i;

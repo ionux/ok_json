@@ -33,6 +33,13 @@
  * #define OK_JSON_USE_STDINT_H
  **/
 #ifdef OK_JSON_USE_STDINT_H
+/**
+ * Suppressing the following include line due to it being part of the conditional
+ * build code and not necessary unless you enable it in your downstream software.
+ * YOU MUST RESOLVE ANY SUBSEQUENT ANALYSIS, RULE, QUALITY BUGS & VIOLATIONS FOR
+ * ENABLING THIS.
+ */
+/* cppcheck-suppress missingIncludeSystem */
 #include <stdint.h>
 #else
 /**

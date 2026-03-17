@@ -110,29 +110,34 @@ Tokenizes the bound JSON text and returns a status code.  On success,
 
 ## Key-based getters
 
-Each getter scans for a `OKJ_STRING` token whose content matches `key`, then
-returns the immediately following token if the type matches.  All getters
-return `NULL` on a missing key, type mismatch, or bad argument.
+Each getter scans for an `OKJ_STRING` token whose content matches `key`, then
+writes the immediately following token into a caller-supplied output struct.
+All getters return `OkjError` — `OKJ_SUCCESS` on success, or the appropriate
+error code on a missing key, type mismatch, or bad argument.
 
-- `OkJsonString  *okj_get_string (OkJsonParser *parser, const char *key)`
-- `OkJsonNumber  *okj_get_number (OkJsonParser *parser, const char *key)`
-- `OkJsonBoolean *okj_get_boolean(OkJsonParser *parser, const char *key)`
-- `OkJsonArray   *okj_get_array  (OkJsonParser *parser, const char *key)`
-- `OkJsonObject  *okj_get_object (OkJsonParser *parser, const char *key)`
-- `OkJsonToken   *okj_get_token  (OkJsonParser *parser, const char *key)`
+```c
+OkjError okj_get_string (OkJsonParser *parser, const char *key, OkJsonString  *out_str);
+OkjError okj_get_number (OkJsonParser *parser, const char *key, OkJsonNumber  *out_num);
+OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *out_bool);
+OkjError okj_get_array  (OkJsonParser *parser, const char *key, OkJsonArray   *out_arr);
+OkjError okj_get_object (OkJsonParser *parser, const char *key, OkJsonObject  *out_obj);
+OkjError okj_get_token  (OkJsonParser *parser, const char *key, OkJsonToken   *out_tok);
+```
 
 `okj_get_array` and `okj_get_object` enforce `OKJ_MAX_ARRAY_SIZE` and
-`OKJ_MAX_OBJECT_SIZE` respectively and return `NULL` when the container
-exceeds the limit.
+`OKJ_MAX_OBJECT_SIZE` respectively and return `OKJ_ERROR_BAD_ARRAY` /
+`OKJ_ERROR_BAD_OBJECT` when the container exceeds the limit.
 
 ### Raw container getters
 
 These bypass the size limit checks and always populate the full `length` field:
 
-- `OkJsonArray  *okj_get_array_raw (OkJsonParser *parser, const char *key)`
-- `OkJsonObject *okj_get_object_raw(OkJsonParser *parser, const char *key)`
+```c
+OkjError okj_get_array_raw (OkJsonParser *parser, const char *key, OkJsonArray  *out_arr);
+OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject *out_obj);
+```
 
-Use raw variants when you need the full source span of a large container.
+Use raw variants when you need the exact source span of a large container.
 
 ### String copy helper
 
@@ -173,11 +178,14 @@ Prints a human-readable dump of every token in `parser` to stdout.
 
 ## Important usage notes
 
-1. Returned `start` pointers in getter structs point into the original input
-   buffer.  Do not free or overwrite the buffer while using those pointers.
-2. Getter return structs are backed by static internal storage; copy values
-   before making another getter call if you need multiple results concurrently.
-3. Missing key or type mismatch returns `NULL`.
-4. Getters do not perform type coercion; the next token must be the exact
-   requested type.
+1. The `start` pointer in every populated output struct points into the
+   original input buffer.  Do not free or overwrite the buffer while using
+   those pointers.
+2. Declare one output struct per value; getter functions write into the struct
+   you supply, so multiple results can coexist as long as you keep them in
+   separate variables.
+3. A missing key or type mismatch returns an error code (not `OKJ_SUCCESS`);
+   always check the return value before reading the output struct.
+4. Getters do not perform type coercion; the token immediately following the
+   key must be the exact requested type.
 5. Use `okj_copy_string()` to obtain null-terminated string values.

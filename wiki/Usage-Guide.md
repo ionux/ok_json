@@ -28,12 +28,18 @@ char json[] = "{\"temp\":42,\"unit\":\"C\",\"valid\":true}";
 
 okj_init(&parser, json);
 if (okj_parse(&parser) == OKJ_SUCCESS) {
-    OkJsonNumber  *temp  = okj_get_number(&parser,  "temp");
-    OkJsonString  *unit  = okj_get_string(&parser,  "unit");
-    OkJsonBoolean *valid = okj_get_boolean(&parser, "valid");
+    OkJsonNumber  temp;
+    OkJsonString  unit;
+    OkJsonBoolean valid;
 
-    if (temp != NULL) {
-        /* temp->start points to "42", temp->length == 2 */
+    if (okj_get_number (&parser, "temp",  &temp)  == OKJ_SUCCESS) {
+        /* temp.start points to "42", temp.length == 2 */
+    }
+    if (okj_get_string (&parser, "unit",  &unit)  == OKJ_SUCCESS) {
+        /* unit.start points to "C",  unit.length == 1 */
+    }
+    if (okj_get_boolean(&parser, "valid", &valid) == OKJ_SUCCESS) {
+        /* valid.start points to "true", valid.length == 4 */
     }
 }
 ```
@@ -47,10 +53,10 @@ Values are not copied into separate buffers. Instead, each result is a
 To obtain a null-terminated C string, use `okj_copy_string()`:
 
 ```c
-OkJsonString *unit = okj_get_string(&parser, "unit");
-if (unit != NULL) {
+OkJsonString unit;
+if (okj_get_string(&parser, "unit", &unit) == OKJ_SUCCESS) {
     char buf[65];
-    okj_copy_string(unit, buf, sizeof(buf));
+    okj_copy_string(&unit, buf, sizeof(buf));
     /* buf now contains a null-terminated copy of the string value */
 }
 ```
@@ -64,8 +70,7 @@ null terminator when `buf_size >= 1`.  It returns the number of bytes copied
 Use `okj_parse()` result values to differentiate classes of failures:
 
 - syntax/format issues: `OKJ_ERROR_SYNTAX`, `OKJ_ERROR_BAD_NUMBER`,
-  `OKJ_ERROR_BAD_STRING`, `OKJ_ERROR_BAD_BOOLEAN`, `OKJ_ERROR_INVALID_CHARACTER`,
-  `OKJ_ERROR_TRAILING_CONTENT`
+  `OKJ_ERROR_BAD_STRING`, `OKJ_ERROR_BAD_BOOLEAN`, `OKJ_ERROR_INVALID_CHARACTER`
 - structural issues: `OKJ_ERROR_BRACKET_MISMATCH`, `OKJ_ERROR_UNEXPECTED_END`
 - resource/limit issues: `OKJ_ERROR_MAX_TOKENS_EXCEEDED`,
   `OKJ_ERROR_MAX_JSON_LEN_EXCEEDED`, `OKJ_ERROR_MAX_DEPTH_EXCEEDED`,
@@ -77,10 +82,10 @@ See the full list of error codes in [API Reference](./API-Reference.md).
 ## Arrays and objects
 
 - `okj_get_array` / `okj_get_object` enforce size limits via `OKJ_MAX_ARRAY_SIZE`
-  (64) and `OKJ_MAX_OBJECT_SIZE` (32) and return `NULL` when the container
-  exceeds the limit.
-- `okj_get_array_raw` / `okj_get_object_raw` return full span + counted members
-  without those limit checks.
+  (64) and `OKJ_MAX_OBJECT_SIZE` (32) and return `OKJ_ERROR_BAD_ARRAY` /
+  `OKJ_ERROR_BAD_OBJECT` when the container exceeds the limit.
+- `okj_get_array_raw` / `okj_get_object_raw` populate the full span + counted
+  members without those limit checks.
 
 Use raw variants when you need the exact source span and can handle larger
 containers explicitly.

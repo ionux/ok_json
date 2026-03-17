@@ -24,23 +24,29 @@ if (okj_parse(&parser) != OKJ_SUCCESS) {
     /* handle parse error */
 }
 
-/* 3. Retrieve scalar values by key */
-OkJsonNumber  *temp  = okj_get_number(&parser,  "temp");
-OkJsonString  *unit  = okj_get_string(&parser,  "unit");
-OkJsonBoolean *valid = okj_get_boolean(&parser, "valid");
+/* 3. Retrieve scalar values by key into caller-supplied structs */
+OkJsonNumber  temp;
+OkJsonString  unit;
+OkJsonBoolean valid;
 
-if (temp  != NULL) { /* temp->start points to "42", temp->length == 2  */ }
-if (unit  != NULL) { /* unit->start points to "C",  unit->length == 1  */ }
-if (valid != NULL) { /* valid->start points to "true", valid->length == 4 */ }
+if (okj_get_number (&parser, "temp",  &temp)  == OKJ_SUCCESS) {
+    /* temp.start points to "42", temp.length == 2 */
+}
+if (okj_get_string (&parser, "unit",  &unit)  == OKJ_SUCCESS) {
+    /* unit.start points to "C",  unit.length == 1 */
+}
+if (okj_get_boolean(&parser, "valid", &valid) == OKJ_SUCCESS) {
+    /* valid.start points to "true", valid.length == 4 */
+}
 
 /* 4. Copy a string value into a caller-supplied buffer */
 char buf[32];
-if (unit != NULL) {
-    okj_copy_string(unit, buf, sizeof(buf)); /* buf == "C\0" */
+if (okj_get_string(&parser, "unit", &unit) == OKJ_SUCCESS) {
+    okj_copy_string(&unit, buf, sizeof(buf)); /* buf == "C\0" */
 }
 ```
 
-All getter functions return `NULL` when the key is not found or when the value type does not match the requested type.
+All getter functions return an `OkjError` code and write their result into a caller-supplied struct.  They return an error code (not `OKJ_SUCCESS`) when the key is not found or the value type does not match.
 
 ## API Reference
 
@@ -53,16 +59,18 @@ All getter functions return `NULL` when the key is not found or when the value t
 
 ### Value Getters
 
-| Function | Returns |
-|----------|---------|
-| `okj_get_string(parser, key)` | `OkJsonString *` — quotes excluded |
-| `okj_get_number(parser, key)` | `OkJsonNumber *` — raw numeric text |
-| `okj_get_boolean(parser, key)` | `OkJsonBoolean *` — `"true"` or `"false"` literal |
-| `okj_get_array(parser, key)` | `OkJsonArray *` — enforces `OKJ_MAX_ARRAY_SIZE` |
-| `okj_get_object(parser, key)` | `OkJsonObject *` — enforces `OKJ_MAX_OBJECT_SIZE` |
-| `okj_get_array_raw(parser, key)` | `OkJsonArray *` — full raw array text, no size limit |
-| `okj_get_object_raw(parser, key)` | `OkJsonObject *` — full raw object text, no size limit |
-| `okj_get_token(parser, key)` | `OkJsonToken *` — raw token from the parser's token array |
+Each getter writes its result into a caller-supplied struct and returns an `OkjError` code.
+
+| Function | Out-param type | Notes |
+|----------|---------------|-------|
+| `okj_get_string(parser, key, out_str)` | `OkJsonString *` | quotes excluded |
+| `okj_get_number(parser, key, out_num)` | `OkJsonNumber *` | raw numeric text |
+| `okj_get_boolean(parser, key, out_bool)` | `OkJsonBoolean *` | `"true"` or `"false"` literal |
+| `okj_get_array(parser, key, out_arr)` | `OkJsonArray *` | enforces `OKJ_MAX_ARRAY_SIZE` |
+| `okj_get_object(parser, key, out_obj)` | `OkJsonObject *` | enforces `OKJ_MAX_OBJECT_SIZE` |
+| `okj_get_array_raw(parser, key, out_arr)` | `OkJsonArray *` | full raw array text, no size limit |
+| `okj_get_object_raw(parser, key, out_obj)` | `OkJsonObject *` | full raw object text, no size limit |
+| `okj_get_token(parser, key, out_tok)` | `OkJsonToken *` | raw token from the parser's token array |
 
 ### Utilities
 

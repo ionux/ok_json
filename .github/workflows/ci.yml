@@ -59,4 +59,21 @@ jobs:
           
           # Exit with the Cppcheck status code to fail the build if necessary
           exit $EXIT_CODE
-          
+
+  fuzz:
+    name: Run libFuzzer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Compile Fuzzer
+        # Compile with Clang, enabling libfuzzer, ASan, and UBSan
+        run: |
+          clang -g -O1 -fsanitize=fuzzer,address,undefined \
+                -Iinclude test/fuzz_target.c -o fuzzer
+
+      - name: Run Fuzzer
+        # Run for 60 seconds max. Fails the build if a crash/leak is found.
+        # Restrict max_len to your parser's limit to optimize fuzzer time.
+        run: ./fuzzer -max_total_time=10 -max_len=4096  

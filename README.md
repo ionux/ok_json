@@ -20,6 +20,13 @@ The goals for this project are to be a simple, light, clean, fully tested, RFC 8
 
 The fuzzing target is compiled with Clang and exercised in CI using coverage-guided fuzzing against the parser input surface. Current CI fuzz runs complete without sanitizer-detected crashes or undefined-behavior findings within the configured time budget.
 
+In addition to the project’s internal test suite, `ok_json` is validated against the external **JSONTestSuite** corpus. The current recorded compliance run passed all parser checks with:
+
+- **Passed:** 283
+- **Failed:** 0
+
+The current external validation results are recorded in `json_compliance_report.txt`.
+
 ## Quick Start
 
 ```c

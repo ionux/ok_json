@@ -751,7 +751,10 @@ static OkjError okj_parse_value(OkJsonParser *parser)
             else
             {
                 /* is_key stays 0 — string is a value */
+            }
 
+            if (result == OKJ_SUCCESS)
+            {
                 tok        = &parser->tokens[parser->token_count];
                 tok->type  = OKJ_STRING;
                 tok->start = &parser->json[parser->position + 1U];  /* skip opening '"' */
@@ -797,7 +800,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                                 for (h = 0U; h < 4U; h++)
                                 {
-                                    if (okj_is_hex_digit(parser->json[parser->position]) == 0U)
+                                    if ((okj_is_hex_digit(parser->json[parser->position]) == 0U) &&
+                                        (loop_break != 1U))
                                     {
                                         result = OKJ_ERROR_BAD_STRING;
                                         loop_break = 1U;

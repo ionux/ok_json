@@ -26,19 +26,19 @@ make coverage
 OkJsonParser parser;
 char json[] = "{\"temp\":42,\"unit\":\"C\",\"valid\":true}";
 
-okj_init(&parser, json);
+okj_init(&parser, json, (uint16_t)(sizeof(json) - 1U));
 if (okj_parse(&parser) == OKJ_SUCCESS) {
     OkJsonNumber  temp;
     OkJsonString  unit;
     OkJsonBoolean valid;
 
-    if (okj_get_number (&parser, "temp",  &temp)  == OKJ_SUCCESS) {
+    if (okj_get_number (&parser, "temp",  4U, &temp)  == OKJ_SUCCESS) {
         /* temp.start points to "42", temp.length == 2 */
     }
-    if (okj_get_string (&parser, "unit",  &unit)  == OKJ_SUCCESS) {
+    if (okj_get_string (&parser, "unit",  4U, &unit)  == OKJ_SUCCESS) {
         /* unit.start points to "C",  unit.length == 1 */
     }
-    if (okj_get_boolean(&parser, "valid", &valid) == OKJ_SUCCESS) {
+    if (okj_get_boolean(&parser, "valid", 5U, &valid) == OKJ_SUCCESS) {
         /* valid.start points to "true", valid.length == 4 */
     }
 }
@@ -54,7 +54,7 @@ To obtain a null-terminated C string, use `okj_copy_string()`:
 
 ```c
 OkJsonString unit;
-if (okj_get_string(&parser, "unit", &unit) == OKJ_SUCCESS) {
+if (okj_get_string(&parser, "unit", 4U, &unit) == OKJ_SUCCESS) {
     char buf[65];
     okj_copy_string(&unit, buf, sizeof(buf));
     /* buf now contains a null-terminated copy of the string value */

@@ -19,7 +19,7 @@ OkJsonParser parser;
 char json[] = "{\"temp\": 42, \"unit\": \"C\", \"valid\": true}";
 
 /* 2. Initialise and parse */
-okj_init(&parser, json);
+okj_init(&parser, json, (uint16_t)(sizeof(json) - 1U));
 if (okj_parse(&parser) != OKJ_SUCCESS) {
     /* handle parse error */
 }
@@ -29,19 +29,19 @@ OkJsonNumber  temp;
 OkJsonString  unit;
 OkJsonBoolean valid;
 
-if (okj_get_number (&parser, "temp",  &temp)  == OKJ_SUCCESS) {
+if (okj_get_number (&parser, "temp",  4U, &temp)  == OKJ_SUCCESS) {
     /* temp.start points to "42", temp.length == 2 */
 }
-if (okj_get_string (&parser, "unit",  &unit)  == OKJ_SUCCESS) {
+if (okj_get_string (&parser, "unit",  4U, &unit)  == OKJ_SUCCESS) {
     /* unit.start points to "C",  unit.length == 1 */
 }
-if (okj_get_boolean(&parser, "valid", &valid) == OKJ_SUCCESS) {
+if (okj_get_boolean(&parser, "valid", 5U, &valid) == OKJ_SUCCESS) {
     /* valid.start points to "true", valid.length == 4 */
 }
 
 /* 4. Copy a string value into a caller-supplied buffer */
 char buf[32];
-if (okj_get_string(&parser, "unit", &unit) == OKJ_SUCCESS) {
+if (okj_get_string(&parser, "unit", 4U, &unit) == OKJ_SUCCESS) {
     okj_copy_string(&unit, buf, sizeof(buf)); /* buf == "C\0" */
 }
 ```
@@ -54,7 +54,7 @@ All getter functions return an `OkjError` code and write their result into a cal
 
 | Function | Description |
 |----------|-------------|
-| `okj_init(parser, json_string)` | Initialise the parser with a mutable JSON string |
+| `okj_init(parser, json_string, json_len)` | Initialise the parser with a mutable JSON string and its byte length |
 | `okj_parse(parser)` | Tokenise the JSON string; returns `OkjError` |
 
 ### Value Getters
@@ -63,14 +63,14 @@ Each getter writes its result into a caller-supplied struct and returns an `OkjE
 
 | Function | Out-param type | Notes |
 |----------|---------------|-------|
-| `okj_get_string(parser, key, out_str)` | `OkJsonString *` | quotes excluded |
-| `okj_get_number(parser, key, out_num)` | `OkJsonNumber *` | raw numeric text |
-| `okj_get_boolean(parser, key, out_bool)` | `OkJsonBoolean *` | `"true"` or `"false"` literal |
-| `okj_get_array(parser, key, out_arr)` | `OkJsonArray *` | enforces `OKJ_MAX_ARRAY_SIZE` |
-| `okj_get_object(parser, key, out_obj)` | `OkJsonObject *` | enforces `OKJ_MAX_OBJECT_SIZE` |
-| `okj_get_array_raw(parser, key, out_arr)` | `OkJsonArray *` | full raw array text, no size limit |
-| `okj_get_object_raw(parser, key, out_obj)` | `OkJsonObject *` | full raw object text, no size limit |
-| `okj_get_token(parser, key, out_tok)` | `OkJsonToken *` | raw token from the parser's token array |
+| `okj_get_string(parser, key, key_len, out_str)` | `OkJsonString *` | quotes excluded |
+| `okj_get_number(parser, key, key_len, out_num)` | `OkJsonNumber *` | raw numeric text |
+| `okj_get_boolean(parser, key, key_len, out_bool)` | `OkJsonBoolean *` | `"true"` or `"false"` literal |
+| `okj_get_array(parser, key, key_len, out_arr)` | `OkJsonArray *` | enforces `OKJ_MAX_ARRAY_SIZE` |
+| `okj_get_object(parser, key, key_len, out_obj)` | `OkJsonObject *` | enforces `OKJ_MAX_OBJECT_SIZE` |
+| `okj_get_array_raw(parser, key, key_len, out_arr)` | `OkJsonArray *` | full raw array text, no size limit |
+| `okj_get_object_raw(parser, key, key_len, out_obj)` | `OkJsonObject *` | full raw object text, no size limit |
+| `okj_get_token(parser, key, key_len, out_tok)` | `OkJsonToken *` | raw token from the parser's token array |
 
 ### Utilities
 
@@ -108,9 +108,8 @@ Requires a C99-capable compiler. Tested with GCC using
 | `OKJ_MAX_OBJECT_SIZE` | 32      | Maximum object member count                  |
 | `OKJ_MAX_JSON_LEN`    | 4096    | Maximum raw JSON input length in bytes       |
 
-`OKJ_MAX_TOKENS` and `OKJ_MAX_DEPTH` are preprocessor macros (used as array
-dimensions in struct definitions). The remaining limits are `static const`
-values defined in the header. All can be overridden at compile time.
+All limits are preprocessor macros defined in the header and can be overridden
+at compile time by defining them before including `ok_json.h`.
 
 ## Wiki
 

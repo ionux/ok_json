@@ -1061,73 +1061,84 @@ OkjError okj_parse(OkJsonParser *parser)
 
     if (parser == NULL)
     {
-        return OKJ_ERROR_BAD_POINTER;
+        result = OKJ_ERROR_BAD_POINTER;
     }
-
-    uint16_t json_len = 0U;
-
-    while (parser->json[json_len] != '\0')
+    else
     {
-        json_len++;
+        uint16_t json_len = 0U;
 
-        if (json_len > OKJ_MAX_JSON_LEN)
+        while ((parser->json[json_len] != '\0') &&
+               (result != OKJ_ERROR_MAX_JSON_LEN_EXCEEDED))
         {
-            return OKJ_ERROR_MAX_JSON_LEN_EXCEEDED;
-        }
-    }
+            json_len++;
 
-    while ((parser->json[parser->position] != '\0') &&
-           (parser->token_count < OKJ_MAX_TOKENS))
-    {
-        uint16_t prev_tokens = parser->token_count;
-        uint16_t prev_depth  = parser->depth;
-
-        result = okj_parse_value(parser);
-
-        if (result != OKJ_SUCCESS)
-        {
-            break;
-        }
-
-        /* Detect completion of the single top-level value:
-         *  - A primitive was emitted at depth 0 (depth stayed 0, new token added), or
-         *  - A container was fully closed back to depth 0 (depth dropped from > 0).
-         * RFC 8259 §2 permits exactly one top-level value; anything other than
-         * optional whitespace that follows it is a syntax error. */
-        if (parser->depth == 0U)
-        {
-            if ((prev_depth > 0U) || (parser->token_count > prev_tokens))
+            if (json_len > OKJ_MAX_JSON_LEN)
             {
-                okj_skip_whitespace(parser);
-
-                if (parser->json[parser->position] != '\0')
-                {
-                    result = OKJ_ERROR_SYNTAX;
-                }
-
-                break;
+                result = OKJ_ERROR_MAX_JSON_LEN_EXCEEDED;
             }
         }
-    }
 
-    if ((result == OKJ_SUCCESS)                      &&
-        (parser->token_count >= OKJ_MAX_TOKENS)      &&
-        (parser->json[parser->position] != '\0'))
-    {
-        result = OKJ_ERROR_MAX_TOKENS_EXCEEDED;
-    }
+        if (result != OKJ_ERROR_MAX_JSON_LEN_EXCEEDED)
+        {
+            uint8_t not_success = 0U;
 
-    /* Any containers still open at end-of-input indicate truncated input. */
-    if ((result == OKJ_SUCCESS) && (parser->depth != 0U))
-    {
-        result = OKJ_ERROR_UNEXPECTED_END;
-    }
+            while ((parser->json[parser->position] != '\0') &&
+                   (parser->token_count < OKJ_MAX_TOKENS)   &&
+                   (not_success == 0U))
+            {
+                uint16_t prev_tokens = parser->token_count;
+                uint16_t prev_depth  = parser->depth;
 
-    /* RFC 8259 §2: a JSON text must contain exactly one value.  An empty
-     * or whitespace-only input has no value and is therefore invalid. */
-    if ((result == OKJ_SUCCESS) && (parser->token_count == 0U))
-    {
-        result = OKJ_ERROR_UNEXPECTED_END;
+                result = okj_parse_value(parser);
+
+                if (result != OKJ_SUCCESS)
+                {
+                    not_success = 1U;
+                }
+                else
+                {
+                    /* Detect completion of the single top-level value:
+                    *  - A primitive was emitted at depth 0 (depth stayed 0, new token added), or
+                    *  - A container was fully closed back to depth 0 (depth dropped from > 0).
+                    * RFC 8259 §2 permits exactly one top-level value; anything other than
+                    * optional whitespace that follows it is a syntax error. */
+                    if (parser->depth == 0U)
+                    {
+                        if ((prev_depth > 0U) || (parser->token_count > prev_tokens))
+                        {
+                            okj_skip_whitespace(parser);
+
+                            if (parser->json[parser->position] != '\0')
+                            {
+                                result = OKJ_ERROR_SYNTAX;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if ((result == OKJ_SUCCESS)                      &&
+                (parser->token_count >= OKJ_MAX_TOKENS)      &&
+                (parser->json[parser->position] != '\0'))
+            {
+                result = OKJ_ERROR_MAX_TOKENS_EXCEEDED;
+            }
+
+            /* Any containers still open at end-of-input indicate truncated input. */
+            if ((result == OKJ_SUCCESS) && (parser->depth != 0U))
+            {
+                result = OKJ_ERROR_UNEXPECTED_END;
+            }
+
+            /* RFC 8259 §2: a JSON text must contain exactly one value.  An empty
+            * or whitespace-only input has no value and is therefore invalid. */
+            if ((result == OKJ_SUCCESS) && (parser->token_count == 0U))
+            {
+                result = OKJ_ERROR_UNEXPECTED_END;
+            }
+        }
     }
 
     return result;

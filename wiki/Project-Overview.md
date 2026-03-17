@@ -62,10 +62,15 @@ Example (simplified):
 OkJsonParser parser;
 char json[] = "{\"temp\":42,\"ok\":true}";
 
-okj_init(&parser, json);
+okj_init(&parser, json, (uint16_t)(sizeof(json) - 1U));
 if (okj_parse(&parser) == OKJ_SUCCESS) {
-    OkJsonNumber *temp = okj_get_number(&parser, "temp");
-    OkJsonBoolean *ok = okj_get_boolean(&parser, "ok");
-    /* Use temp->start/temp->length and ok->start/ok->length */
+    OkJsonNumber  temp;
+    OkJsonBoolean ok;
+    if (okj_get_number (&parser, "temp", 4U, &temp) == OKJ_SUCCESS) {
+        /* Use temp.start / temp.length */
+    }
+    if (okj_get_boolean(&parser, "ok",   2U, &ok)   == OKJ_SUCCESS) {
+        /* Use ok.start / ok.length */
+    }
 }
 ```

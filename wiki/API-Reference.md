@@ -12,6 +12,7 @@ Holds parser state:
 - `token_count`: number of valid tokens
 - `depth`: current nesting depth
 - `json`: pointer to source JSON text
+- `json_len`: byte length of the JSON string (excluding any null terminator)
 - `position`: parse cursor
 
 ### `OkJsonToken`
@@ -90,18 +91,19 @@ All result/failure codes returned by parse and getter routines:
 |---|---|---|---|
 | `OKJ_MAX_TOKENS` | 128 | `#define` | Maximum number of tokens |
 | `OKJ_MAX_DEPTH` | 16 | `#define` | Maximum container nesting depth |
-| `OKJ_MAX_STRING_LEN` | 64 | `const uint16_t` | Maximum key/string length in bytes |
-| `OKJ_MAX_ARRAY_SIZE` | 64 | `const uint16_t` | Maximum array elements (non-raw getter) |
-| `OKJ_MAX_OBJECT_SIZE` | 32 | `const uint16_t` | Maximum object members (non-raw getter) |
-| `OKJ_MAX_JSON_LEN` | 4096 | `const uint16_t` | Maximum input JSON length in bytes |
+| `OKJ_MAX_STRING_LEN` | 64 | `#define` | Maximum key/string length in bytes |
+| `OKJ_MAX_ARRAY_SIZE` | 64 | `#define` | Maximum array elements (non-raw getter) |
+| `OKJ_MAX_OBJECT_SIZE` | 32 | `#define` | Maximum object members (non-raw getter) |
+| `OKJ_MAX_JSON_LEN` | 4096 | `#define` | Maximum input JSON length in bytes |
 
 ## Initialization and parse
 
-### `void okj_init(OkJsonParser *parser, char *json_string)`
+### `void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)`
 
 Initializes parser state and binds it to the caller-provided mutable JSON
-buffer.  The buffer must remain valid for the lifetime of any token pointers
-retrieved from the parser.
+buffer.  `json_len` is the byte length of `json_string` excluding any null
+terminator.  The buffer must remain valid for the lifetime of any token
+pointers retrieved from the parser.
 
 ### `OkjError okj_parse(OkJsonParser *parser)`
 
@@ -116,13 +118,15 @@ All getters return `OkjError` — `OKJ_SUCCESS` on success, or the appropriate
 error code on a missing key, type mismatch, or bad argument.
 
 ```c
-OkjError okj_get_string (OkJsonParser *parser, const char *key, OkJsonString  *out_str);
-OkjError okj_get_number (OkJsonParser *parser, const char *key, OkJsonNumber  *out_num);
-OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *out_bool);
-OkjError okj_get_array  (OkJsonParser *parser, const char *key, OkJsonArray   *out_arr);
-OkjError okj_get_object (OkJsonParser *parser, const char *key, OkJsonObject  *out_obj);
-OkjError okj_get_token  (OkJsonParser *parser, const char *key, OkJsonToken   *out_tok);
+OkjError okj_get_string (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonString  *out_str);
+OkjError okj_get_number (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonNumber  *out_num);
+OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonBoolean *out_bool);
+OkjError okj_get_array  (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray   *out_arr);
+OkjError okj_get_object (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject  *out_obj);
+OkjError okj_get_token  (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonToken   *out_tok);
 ```
+
+`key_len` is the byte length of the key string (excluding any null terminator).
 
 `okj_get_array` and `okj_get_object` enforce `OKJ_MAX_ARRAY_SIZE` and
 `OKJ_MAX_OBJECT_SIZE` respectively and return `OKJ_ERROR_BAD_ARRAY` /
@@ -133,8 +137,8 @@ OkjError okj_get_token  (OkJsonParser *parser, const char *key, OkJsonToken   *o
 These bypass the size limit checks and always populate the full `length` field:
 
 ```c
-OkjError okj_get_array_raw (OkJsonParser *parser, const char *key, OkJsonArray  *out_arr);
-OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject *out_obj);
+OkjError okj_get_array_raw (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray  *out_arr);
+OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj);
 ```
 
 Use raw variants when you need the exact source span of a large container.

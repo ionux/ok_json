@@ -13,6 +13,8 @@ is clean (zero warnings, zero errors). The library has zero stdlib dependencies
 in `ok_json.c`. The CI Valgrind path is correct. All cppcheck MISRA C:2012
 analysis checks pass with no suppressed rule exceptions. A libFuzzer-based fuzz
 target runs in CI (clang + ASan + UBSan, 10 seconds) and passes cleanly.
+External compliance verification via the JSONTestSuite confirms 283/283 tests
+pass with full RFC 8259 compliance (report: `json_compliance_report.txt`).
 
 Post-MVP additions since the original MVP completion:
 - RFC 8259 number exponent notation (`1e10`, `2.5E-3`)
@@ -181,6 +183,8 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 
 1. ✅ `make` completes with zero warnings and zero errors.
 2. ✅ `make test` runs and all tests pass (13 at MVP; 191 as of 2026-03-17).
+8. ✅ External JSONTestSuite compliance: 283/283 tests pass; fully RFC 8259
+      compliant per `json_compliance_report.txt` (2026-03-17).
 3. ✅ The Valgrind step in CI references the correct binary path.
 4. ✅ No `printf` debug statements remain in `ok_json.c`.
 5. ✅ `ok_json.c` does not `#include <ctype.h>`, `<string.h>`, or `<stdio.h>`.

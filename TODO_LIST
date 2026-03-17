@@ -8,6 +8,14 @@ Post-MVP items remaining:
 
 Completed post-MVP items:
 
+* [DONE] Verify RFC 8259 compliance via JSONTestSuite (2026-03-17).
+  Ran the full JSONTestSuite against the parser. All 283/283 tests pass with
+  result "SUCCESS: Fully RFC 8259 Compliant!". The i_ (implementation-defined)
+  files that were rejected (invalid UTF-8, UTF-16, lone continuation bytes,
+  overlong sequences, BOM, 500-level nesting) reflect deliberate strict
+  behaviour consistent with the library's design. Report saved to
+  json_compliance_report.txt in the repository root.
+
 * [DONE] Add libFuzzer fuzz target and CI job (2026-03-17).
   test/fuzz_target.c feeds arbitrary byte arrays into okj_parse() via the
   LLVMFuzzerTestOneInput entry point, compiled with clang -fsanitize=fuzzer,

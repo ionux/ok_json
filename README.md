@@ -2,10 +2,10 @@
 
 ## Description
 
-The goals for this project are to be a simple, light, clean, and RFC 8259-compliant and MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and safety-critical projects. It is written in pure C99 for maximum portability with no external library dependencies.
+The goals for this project are to be a simple, light, clean, fully tested, RFC 8259-compliant and MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and safety-critical projects.  It is written in pure C99 for maximum portability with no external library dependencies.
 
 **Compliance Progress:**
-- Test coverage currently sits at 98% with the goal of 100% coverage by version 1.0.0 release.  Analysis indicates robust happy path, edge case, security and safety corner case handling. 
+- Test coverage currently sits at 100% which meets the goal of 100% coverage by version 1.0.0 release.  Analysis indicates robust happy path, edge case, security and safety corner case handling. 
 - RFC 8259 and MISRA compliance progress and issues tracked in respective `*_COMPLIANCE` markdown files.  Informal analysis shows strong & significant alignment with both RFC 8259 and MISRA C:2012.
 - Current cppcheck MISRA analysis reports all checked rules passing except Rules 8.9, 15.4, 15.5, 19.1, and 19.2, which are currently suppressed and tracked for future refactoring.
 
@@ -40,8 +40,7 @@ if (unit != NULL) {
 }
 ```
 
-All getter functions return `NULL` when the key is not found or when the value
-type does not match the requested type.
+All getter functions return `NULL` when the key is not found or when the value type does not match the requested type.
 
 ## API Reference
 
@@ -119,12 +118,11 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 ## Known Issues
 
 - This code is currently not thread safe.  Do not use in a multithreaded context until the 1.0.0 release corrects this.
-- Does not have complete test coverage.  Will be complete by the 1.0.0 release.
 - Not passing all MISRA C:2012 rule checks yet (using `cppcheck`).  All checks will be passing by the 1.0.0 release.
 
 ## AI Assistance Disclosure
 
-Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc...  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.  AI-generated suggestions were not accepted blindly and should not be interpreted as a substitute for real human engineering judgment, verification, or validation.
+Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc...  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.
 
 ## Contributing
 
@@ -136,8 +134,7 @@ If you've found a bug or improvement, feel free to submit an update! Here's how:
 4. Add, commit, and push your changes back to the repository.
 5. Create a new merge request so I can review your code.
 
-Once everything looks good with no errors or formatting issues, I'll approve
-and merge your code.
+Once everything looks good with no errors or formatting issues and all tests are passing, I'll approve and merge your code.
 
 ## License
 

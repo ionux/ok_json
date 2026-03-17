@@ -4,12 +4,7 @@ MVP is complete as of 2026-03-05. All 191 tests pass. Zero stdlib dependencies.
 See MVP_ROADMAP.md for the full historical task list with completion status.
 
 Post-MVP items remaining:
-
-* Remove OKJ_VALID_CHARS from ok_json.h or put it to use.
-  The 96-element static const array is defined in the header but referenced
-  nowhere in ok_json.c or the tests. As a static in a header it gets
-  duplicated into every translation unit that includes the header, wasting
-  ROM. Intended to be used for string character validation in the future.
+* None.
 
 Completed post-MVP items:
 
@@ -19,6 +14,12 @@ Completed post-MVP items:
   address,undefined. A dedicated 'fuzz' job in .github/workflows/ci.yml runs
   the fuzzer for 10 seconds (-max_total_time=10 -max_len=4096). The job passes
   with no crashes, ASan violations, or UBSan errors.
+
+* [DONE] Remove OKJ_VALID_CHARS from ok_json.h or put it to use.
+  The 96-element static const array is defined in the header but referenced
+  nowhere in ok_json.c or the tests. As a static in a header it gets
+  duplicated into every translation unit that includes the header, wasting
+  ROM. Intended to be used for string character validation in the future.
 
 * [DONE] Refactor all getter functions to output-parameter pattern (2026-03-17).
   All getters (okj_get_string, okj_get_number, okj_get_boolean, okj_get_array,

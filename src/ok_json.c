@@ -1477,46 +1477,50 @@ void okj_debug_print(OkJsonParser *parser)
     if (parser == NULL)
     {
         (void)printf("okj_debug_print: NULL parser\n");
-        return;
     }
-
-    (void)printf("=== OK_JSON Debug Dump: %u token(s) ===\n",
-                 (unsigned int)parser->token_count);
-
-    uint16_t i;
-
-    for (i = 0U; i < parser->token_count; i++)
+    else
     {
-        const OkJsonToken *t = &parser->tokens[i];
+        (void)printf("=== OK_JSON Debug Dump: %u token(s) ===\n",
+                    (unsigned int)parser->token_count);
 
-        uint16_t dlen = t->length;
+        uint16_t i;
 
-        if ((t->type == OKJ_OBJECT) || (t->type == OKJ_ARRAY))
+        for (i = 0U; i < parser->token_count; i++)
         {
-            dlen = okj_measure_container(t->start);
-        }
+            const OkJsonToken *t = &parser->tokens[i];
 
-        (void)printf("[%3u] type=%-9s len=%3u  val='",
-                     (unsigned int)i,
-                     okj_type_name(t->type),
-                     (unsigned int)dlen);
-
-        if (t->start != NULL)
-        {
-            uint16_t j;
-
-            for (j = 0U; j < dlen; j++)
+            if (t != NULL)
             {
-                if (t->start[j] == '\0')
+                uint16_t dlen = t->length;
+
+                if ((t->type == OKJ_OBJECT) || (t->type == OKJ_ARRAY))
                 {
-                    break;
+                    dlen = okj_measure_container(t->start);
                 }
 
-                (void)putchar((int)(unsigned char)t->start[j]);
+                (void)printf("[%3u] type=%-9s len=%3u  val='",
+                            (unsigned int)i,
+                            okj_type_name(t->type),
+                            (unsigned int)dlen);
+
+                if (t->start != NULL)
+                {
+                    uint16_t j;
+
+                    for (j = 0U; j < dlen; j++)
+                    {
+                        if (t->start[j] == '\0')
+                        {
+                            break;
+                        }
+
+                        (void)putchar((int)(unsigned char)t->start[j]);
+                    }
+                }
+
+                (void)printf("'\n");
             }
         }
-
-        (void)printf("'\n");
     }
 }
 

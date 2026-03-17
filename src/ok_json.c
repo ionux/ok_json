@@ -769,7 +769,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                        (parser->json[parser->position] != '\0') &&
                        (loop_break != 1U))
                 {
-                    if ((parser->position - start_pos) >= OKJ_MAX_STRING_LEN)
+                    if ((parser->position - start_pos) >= (uint16_t)OKJ_MAX_STRING_LEN)
                     {
                         loop_break = 1U;
                     }
@@ -867,7 +867,7 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                     /* Position is at '\0': input ended before the closing quote. */
                     result = OKJ_ERROR_UNEXPECTED_END;
                 }
-                else if ((parser->position - start_pos) > OKJ_MAX_STRING_LEN)
+                else if ((parser->position - start_pos) > (uint16_t)OKJ_MAX_STRING_LEN)
                 {
                     /* An escape sequence whose first byte landed just below the
                     * OKJ_MAX_STRING_LEN ceiling advanced position one past the

@@ -1441,6 +1441,7 @@ uint16_t okj_count_elements(const OkJsonParser *parser)
 /* ---------------------------------------------------------------------------
  * Debug print — only compiled when OK_JSON_DEBUG is defined
  * ---------------------------------------------------------------------------*/
+/* GCOVR_EXCL_START */
 #ifdef OK_JSON_DEBUG
 
 /**
@@ -1448,7 +1449,6 @@ uint16_t okj_count_elements(const OkJsonParser *parser)
  * debug build code and used only for development/debugging purposes.  DO NOT USE
  * THIS DEBUG SECTION IN YOUR PRODUCTION CODE!
  */
-
 /* cppcheck-suppress misra-c2012-20.1 */
 /* cppcheck-suppress misra-c2012-21.6 */
 #include <stdio.h>
@@ -1525,3 +1525,4 @@ void okj_debug_print(OkJsonParser *parser)
 }
 
 #endif /* OK_JSON_DEBUG */
+/* GCOVR_EXCL_STOP */

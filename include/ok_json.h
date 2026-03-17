@@ -236,6 +236,7 @@ typedef struct
     uint16_t       token_count;                 /* Number of parsed tokens      */
     uint16_t       depth;                       /* Current nesting depth        */
     char          *json;                        /* Pointer to input JSON string */
+    uint16_t       json_len;                    /* Length of JSON string in bytes (excluding any terminator) */
     uint16_t       position;                    /* Current parsing position     */
 } OkJsonParser;
 
@@ -243,10 +244,11 @@ typedef struct
 /**
  * @brief OK_JSON initialization routine
  *
- * @param parser Pointer to the main ok_json parser object
- * @param json_string Character stream of data you want to parse 
+ * @param parser      Pointer to the main ok_json parser object
+ * @param json_string Character stream of data you want to parse
+ * @param json_len    Length of @p json_string in bytes (excluding any terminator)
  **/
-void okj_init(OkJsonParser *parser, char *json_string);
+void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len);
 
 /**
  * @brief OK_JSON parse routine
@@ -261,36 +263,39 @@ OkjError okj_parse(OkJsonParser *parser);
  *        Scans the token array for a STRING token whose content matches @p key,
  *        then writes the result into the caller-supplied @p out_str struct.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_str Caller-supplied OkJsonString to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_STRING if the key is not found or the value is not a string
  **/
-OkjError okj_get_string(OkJsonParser *parser, const char *key, OkJsonString *out_str);
+OkjError okj_get_string(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonString *out_str);
 
 /**
  * @brief Retrieve the number value associated with a key in a parsed object.
  *        Scans the token array for a STRING token whose content matches @p key,
  *        then writes the result into the caller-supplied @p out_num struct.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_num Caller-supplied OkJsonNumber to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_NUMBER if the key is not found or the value is not a number
  **/
-OkjError okj_get_number(OkJsonParser *parser, const char *key, OkJsonNumber *out_num);
+OkjError okj_get_number(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonNumber *out_num);
 
 /**
  * @brief Retrieve the boolean value associated with a key in a parsed object.
  *        Scans the token array for a STRING token whose content matches @p key,
  *        then writes the result into the caller-supplied @p out_bool struct.
  * @param parser   Pointer to the main ok_json parser object
- * @param key      Null-terminated key name to look up
+ * @param key      Key name to look up (need not be null-terminated)
+ * @param key_len  Length of @p key in bytes
  * @param out_bool Caller-supplied OkJsonBoolean to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_BOOLEAN if the key is not found or the value is not a boolean
  **/
-OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *out_bool);
+OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonBoolean *out_bool);
 
 /**
  * @brief Retrieve the array value associated with a key in a parsed object.
@@ -298,13 +303,14 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *o
  *        then writes the result into the caller-supplied @p out_arr struct.
  *        Enforces OKJ_MAX_ARRAY_SIZE; use okj_get_array_raw() to bypass that limit.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_arr Caller-supplied OkJsonArray to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_ARRAY if the key is not found, the value is not an array,
  *         or the element count exceeds OKJ_MAX_ARRAY_SIZE
  **/
-OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_arr);
+OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr);
 
 /**
  * @brief Retrieve the object value associated with a key in a parsed object.
@@ -312,13 +318,14 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_a
  *        then writes the result into the caller-supplied @p out_obj struct.
  *        Enforces OKJ_MAX_OBJECT_SIZE; use okj_get_object_raw() to bypass that limit.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_obj Caller-supplied OkJsonObject to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_OBJECT if the key is not found, the value is not an object,
  *         or the member count exceeds OKJ_MAX_OBJECT_SIZE
  **/
-OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out_obj);
+OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj);
 
 /**
  * @brief Retrieve the raw token for the value associated with a key.
@@ -326,12 +333,13 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out
  *        then copies the immediately following token into the caller-supplied
  *        @p out_tok struct.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_tok Caller-supplied OkJsonToken to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL
  *         or the key is not found
  **/
-OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_tok);
+OkjError okj_get_token(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonToken *out_tok);
 
 /**
  * @brief Retrieve the entire raw array value associated with a key.
@@ -339,12 +347,13 @@ OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_t
  *        full byte count of the array text (including surrounding brackets) and
  *        does NOT enforce OKJ_MAX_ARRAY_SIZE.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_arr Caller-supplied OkJsonArray to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_ARRAY if the key is not found or the value is not an array
  **/
-OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *out_arr);
+OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr);
 
 /**
  * @brief Retrieve the entire raw object value associated with a key.
@@ -352,12 +361,13 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *o
  *        full byte count of the object text (including surrounding braces) and
  *        does NOT enforce OKJ_MAX_OBJECT_SIZE.
  * @param parser  Pointer to the main ok_json parser object
- * @param key     Null-terminated key name to look up
+ * @param key     Key name to look up (need not be null-terminated)
+ * @param key_len Length of @p key in bytes
  * @param out_obj Caller-supplied OkJsonObject to receive the result
  * @return OKJ_SUCCESS on success; OKJ_ERROR_BAD_POINTER if any pointer is NULL;
  *         OKJ_ERROR_BAD_OBJECT if the key is not found or the value is not an object
  **/
-OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject *out_obj);
+OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj);
 
 /**
  * @brief Copy a parsed string value into a caller-supplied buffer with

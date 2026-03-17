@@ -491,7 +491,7 @@ static uint16_t okj_measure_container(const char *start)
  * Public API
  * ---------------------------------------------------------------------------*/
 
-void okj_init(OkJsonParser *parser, char *json_string)
+void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
 {
     if ((parser != NULL) && (json_string != NULL))
     {
@@ -510,6 +510,7 @@ void okj_init(OkJsonParser *parser, char *json_string)
         }
 
         parser->json        = json_string;
+        parser->json_len    = json_len;
         parser->position    = 0U;
         parser->token_count = 0U;
         parser->depth       = 0U;
@@ -521,7 +522,8 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 {
     if (parser != NULL)
     {
-        while (okj_is_whitespace(parser->json[parser->position]) == 1U)
+        while ((parser->position < parser->json_len) &&
+               (okj_is_whitespace(parser->json[parser->position]) == 1U))
         {
             parser->position++;
         }
@@ -544,13 +546,16 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     {
         okj_skip_whitespace(parser);
 
-        char c = parser->json[parser->position];
-
-        if (c == '\0')
+        if (parser->position >= parser->json_len)
         {
             /* End of input — nothing to do. */
         }
-        else if (c == '{')
+        else
+        {
+
+        char c = parser->json[parser->position];
+
+        if (c == '{')
         {
             /* Object open is only valid in a value position. */
             if ((parser->context != OKJ_CTX_WANT_VALUE) &&
@@ -765,8 +770,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                 uint8_t loop_break = 0U;
 
-                while ((parser->json[parser->position] != '"')  &&
-                       (parser->json[parser->position] != '\0') &&
+                while ((parser->position < parser->json_len)    &&
+                       (parser->json[parser->position] != '"')  &&
                        (loop_break != 1U))
                 {
                     if ((parser->position - start_pos) >= (uint16_t)OKJ_MAX_STRING_LEN)
@@ -779,42 +784,45 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                         {
                             parser->position++;     /* consume backslash */
 
-                            char esc_char = parser->json[parser->position];
-
-                            if (esc_char == '\0')
+                            if (parser->position >= parser->json_len)
                             {
                                 loop_break = 1U;  /* truncated input: backslash at end of stream */
                             }
-                            else if ((esc_char == '"')  || (esc_char == '\\') ||
-                                     (esc_char == '/')  || (esc_char == 'b')  ||
-                                     (esc_char == 'f')  || (esc_char == 'n')  ||
-                                     (esc_char == 'r')  || (esc_char == 't'))
-                            {
-                                parser->position++;     /* consume the escape character */
-                            }
-                            else if (esc_char == 'u')
-                            {
-                                parser->position++;     /* consume 'u' */
-
-                                uint16_t h;
-
-                                for (h = 0U; h < 4U; h++)
-                                {
-                                    if ((okj_is_hex_digit(parser->json[parser->position]) == 0U) &&
-                                        (loop_break != 1U))
-                                    {
-                                        result = OKJ_ERROR_BAD_STRING;
-                                        loop_break = 1U;
-                                    }
-                                    else
-                                    {
-                                        parser->position++;
-                                    }
-                                }
-                            }
                             else
                             {
-                                result = OKJ_ERROR_BAD_STRING;
+                                char esc_char = parser->json[parser->position];
+
+                                if ((esc_char == '"')  || (esc_char == '\\') ||
+                                    (esc_char == '/')  || (esc_char == 'b')  ||
+                                    (esc_char == 'f')  || (esc_char == 'n')  ||
+                                    (esc_char == 'r')  || (esc_char == 't'))
+                                {
+                                    parser->position++;     /* consume the escape character */
+                                }
+                                else if (esc_char == 'u')
+                                {
+                                    parser->position++;     /* consume 'u' */
+
+                                    uint16_t h;
+
+                                    for (h = 0U; h < 4U; h++)
+                                    {
+                                        if ((okj_is_hex_digit(parser->json[parser->position]) == 0U) &&
+                                            (loop_break != 1U))
+                                        {
+                                            result = OKJ_ERROR_BAD_STRING;
+                                            loop_break = 1U;
+                                        }
+                                        else
+                                        {
+                                            parser->position++;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    result = OKJ_ERROR_BAD_STRING;
+                                }
                             }
 
                             if (result != OKJ_SUCCESS)
@@ -856,16 +864,15 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 {
                     /* Error set inside loop (e.g. invalid escape sequence). */
                 }
-                else if ((parser->json[parser->position] != '"') &&
-                        (parser->json[parser->position] != '\0'))
+                else if (parser->position >= parser->json_len)
                 {
-                    /* Loop exited due to the length limit, not a closing quote. */
-                    result = OKJ_ERROR_MAX_STR_LEN_EXCEEDED;
+                    /* Reached end of input before the closing quote. */
+                    result = OKJ_ERROR_UNEXPECTED_END;
                 }
                 else if (parser->json[parser->position] != '"')
                 {
-                    /* Position is at '\0': input ended before the closing quote. */
-                    result = OKJ_ERROR_UNEXPECTED_END;
+                    /* Loop exited due to the length limit, not a closing quote. */
+                    result = OKJ_ERROR_MAX_STR_LEN_EXCEEDED;
                 }
                 else if ((parser->position - start_pos) > (uint16_t)OKJ_MAX_STRING_LEN)
                 {
@@ -923,7 +930,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 {
                     parser->position++;     /* consume '-' */
 
-                    if (okj_is_digit(parser->json[parser->position]) == 0U)
+                    if ((parser->position >= parser->json_len) ||
+                        (okj_is_digit(parser->json[parser->position]) == 0U))
                     {
                         number_ok = 0U;     /* bare minus is not a valid number */
                     }
@@ -932,18 +940,21 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 /* Step 2: integer part — zero OR digit1-9 *DIGIT */
                 if (number_ok != 0U)
                 {
-                    if (parser->json[parser->position] == '0')
+                    if ((parser->position < parser->json_len) &&
+                        (parser->json[parser->position] == '0'))
                     {
                         parser->position++;     /* consume '0' */
 
-                        if (okj_is_digit(parser->json[parser->position]) != 0U)
+                        if ((parser->position < parser->json_len) &&
+                            (okj_is_digit(parser->json[parser->position]) != 0U))
                         {
                             number_ok = 0U;     /* leading zero: "012" is invalid */
                         }
                     }
                     else
                     {
-                        while (okj_is_digit(parser->json[parser->position]) != 0U)
+                        while ((parser->position < parser->json_len) &&
+                               (okj_is_digit(parser->json[parser->position]) != 0U))
                         {
                             parser->position++;
                         }
@@ -951,17 +962,21 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 }
 
                 /* Step 3: optional fractional part — '.' 1*DIGIT */
-                if ((number_ok != 0U) && (parser->json[parser->position] == '.'))
+                if ((number_ok != 0U) &&
+                    (parser->position < parser->json_len) &&
+                    (parser->json[parser->position] == '.'))
                 {
                     parser->position++;     /* consume '.' */
 
-                    if (okj_is_digit(parser->json[parser->position]) == 0U)
+                    if ((parser->position >= parser->json_len) ||
+                        (okj_is_digit(parser->json[parser->position]) == 0U))
                     {
                         number_ok = 0U;     /* decimal point must be followed by a digit */
                     }
                     else
                     {
-                        while (okj_is_digit(parser->json[parser->position]) != 0U)
+                        while ((parser->position < parser->json_len) &&
+                               (okj_is_digit(parser->json[parser->position]) != 0U))
                         {
                             parser->position++;
                         }
@@ -970,24 +985,28 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                 /* Step 4: optional exponent part — ('e'/'E') [sign] 1*DIGIT */
                 if ((number_ok != 0U) &&
+                    (parser->position < parser->json_len) &&
                     ((parser->json[parser->position] == 'e') ||
                      (parser->json[parser->position] == 'E')))
                 {
                     parser->position++;     /* consume 'e' or 'E' */
 
-                    if ((parser->json[parser->position] == '+') ||
-                        (parser->json[parser->position] == '-'))
+                    if ((parser->position < parser->json_len) &&
+                        ((parser->json[parser->position] == '+') ||
+                         (parser->json[parser->position] == '-')))
                     {
                         parser->position++;     /* consume optional sign */
                     }
 
-                    if (okj_is_digit(parser->json[parser->position]) == 0U)
+                    if ((parser->position >= parser->json_len) ||
+                        (okj_is_digit(parser->json[parser->position]) == 0U))
                     {
                         number_ok = 0U;     /* exponent requires at least one digit */
                     }
                     else
                     {
-                        while (okj_is_digit(parser->json[parser->position]) != 0U)
+                        while ((parser->position < parser->json_len) &&
+                               (okj_is_digit(parser->json[parser->position]) != 0U))
                         {
                             parser->position++;
                         }
@@ -1028,8 +1047,10 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                 parser->position += 4U;
 
-                /* RFC 8259: keyword must end at a value boundary (no "truetrue"). */
-                if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+                /* RFC 8259: keyword must end at a value boundary (no "truetrue").
+                 * End of input is always a valid boundary. */
+                if ((parser->position < parser->json_len) &&
+                    (okj_is_value_terminator(parser->json[parser->position]) == 0U))
                 {
                     result = OKJ_ERROR_SYNTAX;
                 }
@@ -1060,7 +1081,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                 parser->position += 5U;
 
-                if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+                if ((parser->position < parser->json_len) &&
+                    (okj_is_value_terminator(parser->json[parser->position]) == 0U))
                 {
                     result = OKJ_ERROR_SYNTAX;
                 }
@@ -1091,7 +1113,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                 parser->position += 4U;
 
-                if (okj_is_value_terminator(parser->json[parser->position]) == 0U)
+                if ((parser->position < parser->json_len) &&
+                    (okj_is_value_terminator(parser->json[parser->position]) == 0U))
                 {
                     result = OKJ_ERROR_SYNTAX;
                 }
@@ -1110,6 +1133,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
         {
             result = OKJ_ERROR_SYNTAX;
         }
+
+        } /* end else (position < json_len) */
     }
 
     return result;
@@ -1125,25 +1150,17 @@ OkjError okj_parse(OkJsonParser *parser)
     }
     else
     {
-        uint16_t json_len = 0U;
-
-        while ((parser->json[json_len] != '\0') &&
-               (result != OKJ_ERROR_MAX_JSON_LEN_EXCEEDED))
+        if (parser->json_len > OKJ_MAX_JSON_LEN)
         {
-            json_len++;
-
-            if (json_len > OKJ_MAX_JSON_LEN)
-            {
-                result = OKJ_ERROR_MAX_JSON_LEN_EXCEEDED;
-            }
+            result = OKJ_ERROR_MAX_JSON_LEN_EXCEEDED;
         }
 
         if (result != OKJ_ERROR_MAX_JSON_LEN_EXCEEDED)
         {
             uint8_t not_success = 0U;
 
-            while ((parser->json[parser->position] != '\0') &&
-                   (parser->token_count < OKJ_MAX_TOKENS)   &&
+            while ((parser->position < parser->json_len)  &&
+                   (parser->token_count < OKJ_MAX_TOKENS) &&
                    (not_success == 0U))
             {
                 uint16_t prev_tokens = parser->token_count;
@@ -1168,7 +1185,7 @@ OkjError okj_parse(OkJsonParser *parser)
                         {
                             okj_skip_whitespace(parser);
 
-                            if (parser->json[parser->position] != '\0')
+                            if (parser->position < parser->json_len)
                             {
                                 result = OKJ_ERROR_SYNTAX;
                             }
@@ -1181,7 +1198,7 @@ OkjError okj_parse(OkJsonParser *parser)
 
             if ((result == OKJ_SUCCESS)                      &&
                 (parser->token_count >= OKJ_MAX_TOKENS)      &&
-                (parser->json[parser->position] != '\0'))
+                (parser->position < parser->json_len))
             {
                 result = OKJ_ERROR_MAX_TOKENS_EXCEEDED;
             }
@@ -1208,31 +1225,17 @@ OkjError okj_parse(OkJsonParser *parser)
  * Internal lookup helper
  * ---------------------------------------------------------------------------*/
 
-/* Scans the token array for a STRING token whose content equals `key`.
+/* Scans the token array for a STRING token whose content equals `key`
+ * (of length `key_len` bytes).  The key need not be null-terminated.
  * Returns the index of the NEXT token (the value), or OKJ_MAX_TOKENS if
- * not found. */
-static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
+ * not found.  Keys longer than OKJ_MAX_STRING_LEN are never found because
+ * the parser enforces that limit on stored tokens. */
+static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint16_t key_len)
 {
     uint16_t result = OKJ_MAX_TOKENS;
 
     if ((parser != NULL) && (key != NULL))
     {
-        uint16_t key_len = 0U;
-
-        uint8_t end_of_string = 0U;
-
-        while ((key_len <= OKJ_MAX_STRING_LEN) && (end_of_string != 1U))
-        {
-            if (key[key_len] == '\0')
-            {
-                end_of_string = 1U;
-            }
-            else
-            {
-                key_len++;
-            }
-        }
-
         uint16_t i;
 
         for (i = 0U; (i + 1U) < parser->token_count; i++)
@@ -1256,7 +1259,7 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key)
  * Getter functions
  * ---------------------------------------------------------------------------*/
 
-OkjError okj_get_string(OkJsonParser *parser, const char *key, OkJsonString *out_str)
+OkjError okj_get_string(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonString *out_str)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1266,7 +1269,7 @@ OkjError okj_get_string(OkJsonParser *parser, const char *key, OkJsonString *out
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_STRING))
         {
@@ -1282,7 +1285,7 @@ OkjError okj_get_string(OkJsonParser *parser, const char *key, OkJsonString *out
     return result;
 }
 
-OkjError okj_get_number(OkJsonParser *parser, const char *key, OkJsonNumber *out_num)
+OkjError okj_get_number(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonNumber *out_num)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1292,7 +1295,7 @@ OkjError okj_get_number(OkJsonParser *parser, const char *key, OkJsonNumber *out
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_NUMBER))
         {
@@ -1308,7 +1311,7 @@ OkjError okj_get_number(OkJsonParser *parser, const char *key, OkJsonNumber *out
     return result;
 }
 
-OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *out_bool)
+OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonBoolean *out_bool)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1318,7 +1321,7 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *o
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_BOOLEAN))
         {
@@ -1334,7 +1337,7 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, OkJsonBoolean *o
     return result;
 }
 
-OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_arr)
+OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1344,7 +1347,7 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_a
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
         {
@@ -1366,7 +1369,7 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, OkJsonArray *out_a
     return result;
 }
 
-OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out_obj)
+OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1376,7 +1379,7 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
         {
@@ -1398,7 +1401,7 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, OkJsonObject *out
     return result;
 }
 
-OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_tok)
+OkjError okj_get_token(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonToken *out_tok)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1408,7 +1411,7 @@ OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_t
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if (idx == OKJ_MAX_TOKENS)
         {
@@ -1425,7 +1428,7 @@ OkjError okj_get_token(OkJsonParser *parser, const char *key, OkJsonToken *out_t
     return result;
 }
 
-OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *out_arr)
+OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1435,7 +1438,7 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *o
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
         {
@@ -1452,7 +1455,7 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, OkJsonArray *o
     return result;
 }
 
-OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject *out_obj)
+OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj)
 {
     OkjError result = OKJ_SUCCESS;
 
@@ -1462,7 +1465,7 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, OkJsonObject 
     }
     else
     {
-        uint16_t idx = okj_find_value_index(parser, key);
+        uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
         {

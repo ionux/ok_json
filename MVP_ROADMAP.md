@@ -11,7 +11,8 @@ by embedded developers as a minimal, dependency-free library.
 **MVP is complete and post-MVP work is ongoing.** All 191 tests pass. The build
 is clean (zero warnings, zero errors). The library has zero stdlib dependencies
 in `ok_json.c`. The CI Valgrind path is correct. All cppcheck MISRA C:2012
-analysis checks pass with no suppressed rule exceptions.
+analysis checks pass with no suppressed rule exceptions. A libFuzzer-based fuzz
+target runs in CI (clang + ASan + UBSan, 10 seconds) and passes cleanly.
 
 Post-MVP additions since the original MVP completion:
 - RFC 8259 number exponent notation (`1e10`, `2.5E-3`)
@@ -51,6 +52,10 @@ Post-MVP additions since the original MVP completion:
   quoted-string structural-character spoofing, multi-byte UTF-8 boundary
   cases, and many more
 - Test suite grown from 13 to 191 tests
+- libFuzzer fuzz target (`test/fuzz_target.c`): feeds random byte arrays into
+  `okj_parse()` under clang with `-fsanitize=fuzzer,address,undefined`; CI job
+  runs for 10 seconds with `-max_len=4096` and passes with no crashes, ASan
+  violations, or UBSan errors
 
 The sections below are preserved for historical reference, with status
 annotations added. Open items have been moved to the TODO_LIST.
@@ -139,6 +144,7 @@ Resolved via Option A: test now asserts `token_count == 3` with tokens
 | 22 | Add test for `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | ✅ `test_max_tokens_exceeded` |
 | 23 | Add test for deeply nested JSON rejection | ✅ `test_deeply_nested_at_limit` (updated post-MVP to exercise depth ceiling) |
 | 24 | Add test for `OKJ_ERROR_UNEXPECTED_END` (truncated JSON) | ✅ `test_truncated_string` |
+| 25 | Add libFuzzer fuzz target and CI job | ✅ `test/fuzz_target.c`; CI fuzz job with ASan + UBSan passes |
 
 ### Phase 5 — Documentation and polish ✅ COMPLETE
 

@@ -13,6 +13,13 @@ Post-MVP items remaining:
 
 Completed post-MVP items:
 
+* [DONE] Add libFuzzer fuzz target and CI job (2026-03-17).
+  test/fuzz_target.c feeds arbitrary byte arrays into okj_parse() via the
+  LLVMFuzzerTestOneInput entry point, compiled with clang -fsanitize=fuzzer,
+  address,undefined. A dedicated 'fuzz' job in .github/workflows/ci.yml runs
+  the fuzzer for 10 seconds (-max_total_time=10 -max_len=4096). The job passes
+  with no crashes, ASan violations, or UBSan errors.
+
 * [DONE] Refactor all getter functions to output-parameter pattern (2026-03-17).
   All getters (okj_get_string, okj_get_number, okj_get_boolean, okj_get_array,
   okj_get_object, okj_get_token, okj_get_array_raw, okj_get_object_raw) now

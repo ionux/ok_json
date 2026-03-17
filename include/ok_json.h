@@ -98,20 +98,6 @@ typedef unsigned char   uint8_t;
 #define OKJ_MAX_JSON_LEN 4096U
 
 /**
- * @brief Array of all valid ASCII characters for string processing
- **/
-static const char OKJ_VALID_CHARS[96] = {
-        ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+',
-        ',', '-', '.', '/', '0', '1', '2',  '3', '4', '5', '6', '7',
-        '8', '9', ':', ';', '<', '=', '>',  '?', '@', 'A', 'B', 'C',
-        'D', 'E', 'F', 'G', 'H', 'I', 'J',  'K', 'L', 'M', 'N', 'O',
-        'P', 'Q', 'R', 'S', 'T', 'U', 'V',  'W', 'X', 'Y', 'Z', '[',
-        '\\',']', '^', '_', '`', 'a', 'b',  'c', 'd', 'e', 'f', 'g',
-        'h', 'i', 'j', 'k', 'l', 'm', 'n',  'o', 'p', 'q', 'r', 's',
-        't', 'u', 'v', 'w', 'x', 'y', 'z',  '{', '|', '}', '~', '\0'
-};
-
-/**
  * @brief Grammar context used internally to validate token sequence during
  * parsing.  Tracks what the parser currently expects next so that structural
  * errors (trailing commas, missing colons, non-string object keys, etc.) are

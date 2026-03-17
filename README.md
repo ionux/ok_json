@@ -7,7 +7,7 @@ The goals for this project are to be a simple, light, clean, fully tested, RFC 8
 **Compliance Progress:**
 - Test coverage currently sits at 100% which meets the goal of 100% coverage by version 1.0.0 release.  Analysis indicates robust happy path, edge case, security and safety corner case handling. 
 - RFC 8259 and MISRA compliance progress and issues tracked in respective `*_COMPLIANCE` markdown files.  Informal analysis shows strong & significant alignment with both RFC 8259 and MISRA C:2012.
-- Current `cppcheck` MISRA analysis reports all checked rules passing except Rules 8.9, 15.4, 15.5, which are currently tracked for refactoring before 1.0.0 release.
+- Current `cppcheck` MISRA analysis reports all checked rules passing.
 
 ## Quick Start
 
@@ -123,8 +123,7 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 - [Development and Testing](wiki/Development-and-Testing.md)
 
 ## Known Issues
-
-- Not passing all MISRA C:2012 rule checks yet (using `cppcheck`).  All checks will be passing by the 1.0.0 release.
+- None.
 
 ## AI Assistance Disclosure
 

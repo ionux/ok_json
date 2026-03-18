@@ -1,0 +1,27 @@
+{
+  "name": "ok_json",
+  "version": "1.0.0",
+  "repo": "ionux/ok_json",
+  "description": "Simple and clean RFC-compliant & MISRA-compliant JSON parser suitable for embedded, memory-constrained and safety-critical projects.",
+  "keywords": [
+    "json",
+    "json-parser",
+    "parser",
+    "parser-library",
+    "deterministic",
+    "rfc8259",
+    "no-external-dependency",
+    "rfc-compliant",
+    "validated",
+    "embedded",
+    "c99",
+    "misra",
+    "safety-critical",
+    "zero-allocation"
+  ],
+  "license": "MIT",
+  "src": [
+    "src/ok_json.c",
+    "include/ok_json.h"
+  ]
+}

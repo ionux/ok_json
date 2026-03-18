@@ -31,6 +31,29 @@
  * Internal helpers — no external library dependencies
  * ---------------------------------------------------------------------------*/
 
+/*@
+  // 1. Frame Condition
+  // This function modifies absolutely no external memory.
+  assigns \nothing;
+
+  // 2. Behaviors
+  // We define exactly what constitutes a "success" (is whitespace) 
+  // and "failure" (is not whitespace).
+  behavior is_space:
+    assumes c == ' ' || c == '\t' || c == '\n' || c == '\r';
+    ensures \result == 1;
+
+  behavior not_space:
+    assumes !(c == ' ' || c == '\t' || c == '\n' || c == '\r');
+    ensures \result == 0;
+
+  // 3. Completeness Guarantees
+  // This forces the WP prover to verify mathematically that our two 
+  // behaviors cover 100% of all possible inputs (complete) and that 
+  // they never overlap (disjoint).
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_is_whitespace(char c)
 {
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');

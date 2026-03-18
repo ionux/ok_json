@@ -91,13 +91,16 @@ jobs:
 
       - name: Verify ACSL Contracts
         run: |
-          # Run the Weakest Precondition (WP) plugin with Runtime Error (RTE) generation.
-          # -cpp-extra-args ensures Frama-C understands your headers and C99 syntax.
-          # -wp-fct restricts the mathematical proofs only to the functions we have annotated so far.
-          frama-c \
+          # 1. Give the 'opam' user ownership of the checked-out workspace
+          #    so it can read the code and write temporary mathematical proof files.
+          chown -R opam:opam .
+          
+          # 2. Switch to the 'opam' user and use 'opam exec' to automatically
+          #    load the correct $PATH and OCaml environment variables before running.
+          su opam -c 'opam exec -- frama-c \
             -cpp-extra-args="-I./include -std=c99" \
             -wp \
             -wp-rte \
             -wp-timeout 10 \
             -wp-fct okj_is_whitespace \
-            src/ok_json.c
+            src/ok_json.c'

@@ -83,6 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: framac/frama-c:32.0
+      # Force the container to run as root to fix workspace mount permissions
+      options: --user root
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

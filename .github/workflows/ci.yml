@@ -82,7 +82,7 @@ jobs:
     name: Mathematical Proofs (Frama-C WP)
     runs-on: ubuntu-latest
     container:
-      image: framac/frama-c:latest
+      image: framac/frama-c:32.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

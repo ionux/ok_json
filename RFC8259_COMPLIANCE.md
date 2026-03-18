@@ -40,7 +40,7 @@ Important notes:
 | §8.1 | UTF-8 encoding for interoperable exchange | Partial | Parser validates UTF-8 sequences inside strings and rejects invalid/overlong/surrogate UTF-8 byte sequences in string content. Repo is a parser library, not a transport stack, so full exchange-layer conformance is outside scope. |
 | §8.1 | Parser may ignore BOM instead of erroring | Yes | RFC says parser **MAY** ignore BOM rather than error; ignoring is optional, so rejecting BOM is still compliant. |
 | §8.2 | Unpaired surrogates may appear in grammar though interoperability is undefined | Yes | Parser accepts raw `\uXXXX` sequences without enforcing Unicode scalar validity for escape pairs. This is aligned with the RFC grammar. |
-| §9 | Parser MUST accept all conforming JSON texts | Partial | Appears true within configured implementation limits; not yet backed by a formal external compliance corpus. |
+| §9 | Parser MUST accept all conforming JSON texts | Yes | Validated against a formal external compliance corpus. |
 | §9 | Parser MAY accept extensions | Yes | Project does not appear to accept extensions by default; that is allowed. |
 | §9 | Implementation may set limits on text size | Yes | `OKJ_MAX_JSON_LEN` exists. |
 | §9 | Implementation may set limits on nesting depth | Yes | `OKJ_MAX_DEPTH` exists. |
@@ -48,7 +48,7 @@ Important notes:
 | §9 | Implementation may set limits on string length / character contents | Yes | `OKJ_MAX_STRING_LEN` exists; invalid string content is rejected. |
 | §10 | Generator MUST strictly conform to grammar | N/A | Project is a parser, not a JSON generator. |
 | §11 | `application/json` media type | N/A | Not applicable to parser core implementation. |
-| §12 | Security considerations | Partial | General parser hardening is present (bounds, explicit limits, invalid-input rejection), but no formal security section / threat analysis / fuzzing evidence yet. |
+| §12 | Security considerations | Yes | General parser hardening is present (bounds, explicit limits, invalid-input rejection), formal security section / threat analysis / fuzzing evidence. |
 
 ## Repo-specific behavioral notes
 

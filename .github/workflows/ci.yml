@@ -1,6 +1,6 @@
 name: OK_JSON Library CI
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build-and-test:
@@ -77,3 +77,25 @@ jobs:
         # Run for 60 seconds max. Fails the build if a crash/leak is found.
         # Restrict max_len to your parser's limit to optimize fuzzer time.
         run: ./fuzzer -max_total_time=10 -max_len=4096  
+
+  formal-verification:
+    name: Mathematical Proofs (Frama-C WP)
+    runs-on: ubuntu-latest
+    container:
+      image: framac/frama-c:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Verify ACSL Contracts
+        run: |
+          # Run the Weakest Precondition (WP) plugin with Runtime Error (RTE) generation.
+          # -cpp-extra-args ensures Frama-C understands your headers and C99 syntax.
+          # -wp-fct restricts the mathematical proofs only to the functions we have annotated so far.
+          frama-c \
+            -cpp-extra-args="-I./include -std=c99" \
+            -wp \
+            -wp-rte \
+            -wp-timeout 10 \
+            -wp-fct okj_is_whitespace \
+            src/ok_json.c

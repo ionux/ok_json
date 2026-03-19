@@ -107,7 +107,7 @@ jobs:
             -wp \
             -wp-rte \
             -wp-timeout 10 \
-            -wp-fct okj_is_whitespace,okj_skip_whitespace,okj_is_digit,okj_is_hex_digit,okj_match,okj_init \
+            -wp-fct okj_is_whitespace,okj_skip_whitespace,okj_is_digit,okj_is_hex_digit,okj_match,okj_init,okj_is_utf8_continuation \
             src/ok_json.c' 2>&1)
           
           EXIT_CODE=$?

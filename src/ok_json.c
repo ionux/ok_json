@@ -59,11 +59,45 @@ static uint8_t okj_is_whitespace(char c)
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
 }
 
+/*@
+  // 1. Frame Condition
+  // This function modifies absolutely no external memory.
+  assigns \nothing;
+
+  // 2. Behaviors
+  // We define exactly what constitutes a "success" (is digit) 
+  // and "failure" (is not digit).
+  behavior is_digit:
+    assumes c >= '0' && c <= '9';
+    ensures \result == 1;
+
+  behavior not_digit:
+    assumes !(c >= '0' && c <= '9');
+    ensures \result == 0;
+
+  // 3. Completeness Guarantees
+  // This forces the WP prover to verify mathematically that our two 
+  // behaviors cover 100% of all possible inputs (complete) and that 
+  // they never overlap (disjoint).
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_is_digit(char c)
 {
     return (c >= '0') && (c <= '9');
 }
 
+/*@
+  assigns \nothing;
+  behavior is_hex:
+    assumes (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    ensures \result == 1;
+  behavior not_hex:
+    assumes !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+    ensures \result == 0;
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_is_hex_digit(char c)
 {
     return ((c >= '0') && (c <= '9')) ||
@@ -228,10 +262,32 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
     return result;
 }
 
-/* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
- * Stops early on a NUL byte in `src` to avoid overreads. */
+/*@
+  // 1. Preconditions
+  // If the pointers are not NULL, they MUST be readable up to 'len' bytes.
+  // This precondition acts as a contract for whoever calls okj_match.
+  requires src != \null ==> \valid_read(src + (0 .. len - 1));
+  requires lit != \null ==> \valid_read(lit + (0 .. len - 1));
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior invalid_ptrs:
+    assumes src == \null || lit == \null;
+    ensures \result == 0;
+    
+  behavior valid_ptrs:
+    assumes src != \null && lit != \null;
+    ensures \result == 0 || \result == 1; // It must return a boolean equivalent
+    
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
 {
+  /* Returns 1 if the first `len` bytes of `src` equal `lit`, 0 otherwise.
+   * Stops early on a NUL byte in `src` to avoid overreads. */
     uint8_t result = 1U;
 
     if ((src == NULL) || (lit == NULL))
@@ -242,6 +298,20 @@ static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
     {
         uint16_t i;
 
+        /*@
+          // LOOP INVARIANTS
+          // Prove 'i' never exceeds 'len' to guarantee no out-of-bounds access.
+          loop invariant 0 <= i <= len;
+          
+          // The result state can only ever be 0 or 1.
+          loop invariant result == 0 || result == 1;
+          
+          // Explicitly state what variables the loop modifies.
+          loop assigns i, result;
+          
+          // Prove termination.
+          loop variant len - i;
+        */
         for (i = 0U; (i < len) && (result != 0U); i++)
         {
             if ((src[i] == '\0') || (src[i] != lit[i]))

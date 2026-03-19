@@ -554,12 +554,7 @@ void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
   // exceed the payload length.
   requires parser != \null ==> parser->position <= parser->json_len;
 
-  // 2. Frame Condition
-  // We explicitly state that the ONLY thing this function is allowed 
-  // to modify in the entire program is the parser's position.
-  assigns parser != \null ? parser->position : \nothing;
-
-  // 3. Behaviors
+  // 2. Behaviors (These handle the 'assigns' automatically)
   behavior is_null:
     assumes parser == \null;
     assigns \nothing;
@@ -580,15 +575,12 @@ static void okj_skip_whitespace(OkJsonParser *parser)
         /*@
           // LOOP INVARIANTS: These are mathematically proven before the loop 
           // starts, at the end of every iteration, and after the loop exits.
+          // Split into individual goals for the prover.
+
+          loop invariant \at(parser->position, Pre) <= parser->position;
+          loop invariant parser->position <= parser->json_len;
           
-          // Prove the position never shrinks, and never exceeds the buffer length.
-          loop invariant \at(parser->position, Pre) <= parser->position <= parser->json_len;
-          
-          // Prove the loop only modifies the position field.
           loop assigns parser->position;
-          
-          // Prove the loop will eventually terminate (the distance between 
-          // the position and the length strictly decreases).
           loop variant parser->json_len - parser->position;
         */
         while ((parser->position < parser->json_len) &&

@@ -149,14 +149,44 @@ static uint8_t okj_is_utf8_continuation(uint8_t byte)
     return result;
 }
 
-/* Validate one UTF-8 scalar-value sequence starting at src[pos].
- * On success sets *advance (1..4) and returns 1, else returns 0.
- * TODO: Refactoring this to comply with single return rule has
- * really made the cognitive complexity of this function worse.
- * Need to refactor this again to reduce it. -RLM
- */
+/*@
+  // 1. Preconditions
+  requires src != \null;
+  requires advance != \null;
+  
+  // The caller MUST guarantee that the advance pointer is writable.
+  requires \valid(advance);
+  
+  // The caller MUST guarantee that it is safe to read up to 4 bytes 
+  // starting at the current position. If they pass a string that ends 
+  // 2 bytes from 'pos', Frama-C will fail the build at the call site!
+  // We also ensure pos doesn't mathematically overflow when adding 3.
+  requires pos <= 65531; 
+  requires \valid_read(src + (pos .. pos + 3));
+
+  // 2. Frame Condition
+  // We only modify the value pointed to by 'advance'
+  assigns *advance;
+
+  // 3. Behaviors
+  behavior success:
+    assumes src != \null && advance != \null;
+    // The function must return a boolean 0 or 1
+    ensures \result == 0 || \result == 1;
+    // If it succeeds, the advance pointer must be set between 1 and 4
+    ensures \result == 1 ==> (*advance >= 1 && *advance <= 4);
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_t *advance)
 {
+    /* Validate one UTF-8 scalar-value sequence starting at src[pos].
+     * On success sets *advance (1..4) and returns 1, else returns 0.
+     * TODO: Refactoring this to comply with single return rule has
+     * really made the cognitive complexity of this function worse.
+     * Need to refactor this again to reduce it. -RLM
+     */
     uint8_t result = 0U;
 
     if ((src != NULL) && (advance != NULL))

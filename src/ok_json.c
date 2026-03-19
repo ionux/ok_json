@@ -387,11 +387,33 @@ static uint8_t okj_match(const char *src, const char *lit, uint16_t len)
     return result;
 }
 
-/* Returns 1 if `c` is a valid character that may immediately follow a JSON
- * value token (keyword literal, number, or closing bracket).  Valid
- * terminators are: end of input, whitespace, comma, or a closing bracket. */
+/*@
+  // 1. Frame Condition
+  assigns \nothing;
+
+  // 2. Behaviors
+  // We explicitly list the 4 structural terminators AND the 4 whitespace 
+  // characters for the theorem prover's pure logic evaluation.
+  behavior is_terminator:
+    assumes c == '\0' || c == ',' || c == ']' || c == '}' || 
+            c == ' '  || c == '\t' || c == '\n' || c == '\r';
+    ensures \result == 1;
+
+  behavior not_terminator:
+    assumes !(c == '\0' || c == ',' || c == ']' || c == '}' || 
+              c == ' '  || c == '\t' || c == '\n' || c == '\r');
+    ensures \result == 0;
+
+  // 3. Completeness
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_is_value_terminator(char c)
 {
+    /* Returns 1 if `c` is a valid character that may immediately follow a JSON
+     * value token (keyword literal, number, or closing bracket).  Valid
+     * terminators are: end of input, whitespace, comma, or a closing bracket. */
+    
     return (c == '\0') || (c == ',') || (c == ']') || (c == '}') ||
            okj_is_whitespace(c);
 }
@@ -1470,19 +1492,66 @@ OkjError okj_parse(OkJsonParser *parser)
  * Internal lookup helper
  * ---------------------------------------------------------------------------*/
 
-/* Scans the token array for a STRING token whose content equals `key`
- * (of length `key_len` bytes).  The key need not be null-terminated.
- * Returns the index of the NEXT token (the value), or OKJ_MAX_TOKENS if
- * not found.  Keys longer than OKJ_MAX_STRING_LEN are never found because
- * the parser enforces that limit on stored tokens. */
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  
+  // The search key must be safely readable up to key_len.
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+
+  // The caller must guarantee that the parser state is well-formed.
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+
+  // The caller must guarantee that EVERY token in the parser array that 
+  // has a non-null start pointer is safely readable up to its specified length.
+  // This is the mathematical key that allows okj_match to be proven safe.
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Frame Condition
+  // This is a pure search function; it modifies absolutely nothing.
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null;
+    ensures \result == OKJ_MAX_TOKENS;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null;
+    // The result is either OKJ_MAX_TOKENS (not found) or a valid index (1 to token_count)
+    ensures \result == OKJ_MAX_TOKENS || (1 <= \result && \result <= parser->token_count);
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint16_t key_len)
 {
+    /* Scans the token array for a STRING token whose content equals `key`
+    * (of length `key_len` bytes).  The key need not be null-terminated.
+    * Returns the index of the NEXT token (the value), or OKJ_MAX_TOKENS if
+    * not found.  Keys longer than OKJ_MAX_STRING_LEN are never found because
+    * the parser enforces that limit on stored tokens. */
+
     uint16_t result = OKJ_MAX_TOKENS;
 
     if ((parser != NULL) && (key != NULL))
     {
         uint16_t i;
 
+        /*@
+          // LOOP INVARIANTS
+          // i will never exceed the token count
+          loop invariant 0 <= i <= parser->token_count;
+          
+          // Result stays at OKJ_MAX_TOKENS unless a match is found
+          loop invariant result == OKJ_MAX_TOKENS || (1 <= result && result <= parser->token_count);
+          
+          loop assigns i, result;
+          loop variant parser->token_count - i;
+        */
         for (i = 0U; (i + 1U) < parser->token_count; i++)
         {
             const OkJsonToken *t = &parser->tokens[i];

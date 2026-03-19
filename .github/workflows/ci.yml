@@ -91,16 +91,34 @@ jobs:
 
       - name: Verify ACSL Contracts
         run: |
-          # 1. Give the 'opam' user ownership of the checked-out workspace
-          #    so it can read the code and write temporary mathematical proof files.
+          # Give the 'opam' user ownership of the checked-out workspace
           chown -R opam:opam .
           
-          # 2. Switch to the 'opam' user and use 'opam exec' to automatically
-          #    load the correct $PATH and OCaml environment variables before running.
-          su opam -c 'opam exec -- frama-c \
+          echo "## ACSL Contract Verification Results" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          
+          # Temporarily disable 'exit on error' so we can capture the output 
+          # safely even if the WP prover fails to prove a goal.
+          set +e
+          
+          # Run Frama-C as the opam user and capture stdout/stderr into a variable
+          OUTPUT=$(su opam -c 'opam exec -- frama-c \
             -cpp-extra-args="-I./include -std=c99" \
             -wp \
             -wp-rte \
             -wp-timeout 10 \
             -wp-fct okj_is_whitespace,okj_skip_whitespace \
-            src/ok_json.c'
+            src/ok_json.c' 2>&1)
+          
+          EXIT_CODE=$?
+          set -e
+          
+          # Append the captured output to the GitHub step summary
+          echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          # Print to the console so it still appears in the standard GitHub Actions log
+          echo "$OUTPUT"
+          
+          # Exit with Frama-C's status code to fail the CI build if proofs fail
+          exit $EXIT_CODE

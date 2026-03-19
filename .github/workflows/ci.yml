@@ -102,5 +102,5 @@ jobs:
             -wp \
             -wp-rte \
             -wp-timeout 10 \
-            -wp-fct okj_is_whitespace \
+            -wp-fct okj_is_whitespace,okj_skip_whitespace \
             src/ok_json.c'

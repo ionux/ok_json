@@ -117,6 +117,26 @@ static uint8_t okj_is_hex_digit(char c)
            ((c >= 'A') && (c <= 'F'));
 }
 
+/*@
+  // 1. Frame Condition
+  // The function modifies absolutely no external memory.
+  assigns \nothing;
+
+  // 2. Behaviors
+  // A valid UTF-8 continuation byte always has the top two bits set to 10.
+  // In hex, that means masking with 0xC0 (11000000) must equal 0x80 (10000000).
+  behavior is_continuation:
+    assumes (byte & 0xC0U) == 0x80U;
+    ensures \result == 1;
+
+  behavior not_continuation:
+    assumes (byte & 0xC0U) != 0x80U;
+    ensures \result == 0;
+
+  // 3. Completeness Guarantees
+  complete behaviors;
+  disjoint behaviors;
+*/
 static uint8_t okj_is_utf8_continuation(uint8_t byte)
 {
     uint8_t result = 0U;

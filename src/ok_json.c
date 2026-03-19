@@ -541,10 +541,56 @@ void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
     }
 }
 
+/*@
+  // 1. Preconditions
+  // The parser pointer can be NULL, or it must point to a valid struct.
+  requires parser == \null || \valid(parser);
+  
+  // IF the parser is not NULL, the JSON payload it points to must be 
+  // safely readable from index 0 up to json_len - 1.
+  requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+  
+  // IF the parser is not NULL, the current position must not already 
+  // exceed the payload length.
+  requires parser != \null ==> parser->position <= parser->json_len;
+
+  // 2. Frame Condition
+  // We explicitly state that the ONLY thing this function is allowed 
+  // to modify in the entire program is the parser's position.
+  assigns parser != \null ? parser->position : \nothing;
+
+  // 3. Behaviors
+  behavior is_null:
+    assumes parser == \null;
+    assigns \nothing;
+
+  behavior valid_parser:
+    assumes parser != \null;
+    assigns parser->position;
+    ensures parser->position >= \old(parser->position); // Position never goes backwards
+    ensures parser->position <= parser->json_len;       // Position never exceeds buffer
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 static void okj_skip_whitespace(OkJsonParser *parser)
 {
     if (parser != NULL)
     {
+        /*@
+          // LOOP INVARIANTS: These are mathematically proven before the loop 
+          // starts, at the end of every iteration, and after the loop exits.
+          
+          // Prove the position never shrinks, and never exceeds the buffer length.
+          loop invariant \at(parser->position, Pre) <= parser->position <= parser->json_len;
+          
+          // Prove the loop only modifies the position field.
+          loop assigns parser->position;
+          
+          // Prove the loop will eventually terminate (the distance between 
+          // the position and the length strictly decreases).
+          loop variant parser->json_len - parser->position;
+        */
         while ((parser->position < parser->json_len) &&
                (okj_is_whitespace(parser->json[parser->position]) == 1U))
         {

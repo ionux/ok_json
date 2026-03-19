@@ -88,13 +88,25 @@ static uint8_t okj_is_digit(char c)
 }
 
 /*@
+  // 1. Frame Condition
+  // This function modifies absolutely no external memory.
   assigns \nothing;
+
+  // 2. Behaviors
+  // We define exactly what constitutes a "success" (is hex digit) 
+  // and "failure" (is not hex digit).
   behavior is_hex:
     assumes (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     ensures \result == 1;
+
   behavior not_hex:
     assumes !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
     ensures \result == 0;
+
+  // 3. Completeness Guarantees
+  // This forces the WP prover to verify mathematically that our two 
+  // behaviors cover 100% of all possible inputs (complete) and that 
+  // they never overlap (disjoint).
   complete behaviors;
   disjoint behaviors;
 */
@@ -276,11 +288,12 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
   behavior invalid_ptrs:
     assumes src == \null || lit == \null;
     ensures \result == 0;
-    
+
   behavior valid_ptrs:
     assumes src != \null && lit != \null;
     ensures \result == 0 || \result == 1; // It must return a boolean equivalent
-    
+
+  // 3. Completeness Guarantees
   complete behaviors;
   disjoint behaviors;
 */
@@ -584,12 +597,57 @@ static uint16_t okj_measure_container(const char *start)
  * Public API
  * ---------------------------------------------------------------------------*/
 
+/*@
+  // 1. Preconditions
+  // The parser can be NULL, or it must be a valid pointer to the struct.
+  requires parser == \null || \valid(parser);
+
+  // 2. Behaviors
+  behavior null_ptrs:
+    assumes parser == \null || json_string == \null;
+    assigns \nothing;
+
+  behavior valid_ptrs:
+    assumes parser != \null && json_string != \null;
+    
+    // We are modifying the entire parser struct
+    assigns *parser;
+    
+    // Verify standard field initializations
+    ensures parser->json == json_string;
+    ensures parser->json_len == json_len;
+    ensures parser->position == 0;
+    ensures parser->token_count == 0;
+    ensures parser->depth == 0;
+    ensures parser->context == OKJ_CTX_WANT_VALUE;
+    
+    // Verify array initializations using universal quantification
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].type == OKJ_UNDEFINED;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].start == \null;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].length == 0;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_DEPTH ==> parser->depth_stack[k] == OKJ_UNDEFINED;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
 {
     if ((parser != NULL) && (json_string != NULL))
     {
         uint16_t i;
 
+        /*@
+          loop invariant 0 <= i <= OKJ_MAX_TOKENS;
+          
+          // Prove that all elements BEFORE the current index 'i' are correctly initialized
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].type == OKJ_UNDEFINED;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].start == \null;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].length == 0;
+          
+          // Explicitly state which part of the array this loop is allowed to modify
+          loop assigns i, parser->tokens[0 .. OKJ_MAX_TOKENS - 1];
+          loop variant OKJ_MAX_TOKENS - i;
+        */
         for (i = 0U; i < OKJ_MAX_TOKENS; i++)
         {
             parser->tokens[i].type   = OKJ_UNDEFINED;
@@ -597,6 +655,12 @@ void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
             parser->tokens[i].length = 0U;
         }
 
+        /*@
+          loop invariant 0 <= i <= OKJ_MAX_DEPTH;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->depth_stack[k] == OKJ_UNDEFINED;
+          loop assigns i, parser->depth_stack[0 .. OKJ_MAX_DEPTH - 1];
+          loop variant OKJ_MAX_DEPTH - i;
+        */
         for (i = 0U; i < (uint16_t)OKJ_MAX_DEPTH; i++)
         {
             parser->depth_stack[i] = OKJ_UNDEFINED;

@@ -1573,6 +1573,36 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint
  * Getter functions
  * ---------------------------------------------------------------------------*/
 
+/*@
+  // 1. Preconditions
+  // Pointers can be null (we handle that gracefully), but if they aren't, 
+  // they must be valid for reading/writing.
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_str == \null || \valid(out_str);
+
+  // Inherit the token validity requirements so okj_find_value_index is satisfied
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_str == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_str != \null;
+    // We are only allowed to modify the output struct
+    assigns *out_str;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_STRING;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_string(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonString *out_str)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1599,6 +1629,36 @@ OkjError okj_get_string(OkJsonParser *parser, const char *key, uint16_t key_len,
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  // Pointers can be null (we handle that gracefully), but if they aren't, 
+  // they must be valid for reading/writing.
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_num == \null || \valid(out_num);
+
+  // Inherit the token validity requirements so okj_find_value_index is satisfied
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_num == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_num != \null;
+    // We are only allowed to modify the output struct
+    assigns *out_num;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_NUMBER;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_number(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonNumber *out_num)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1625,6 +1685,36 @@ OkjError okj_get_number(OkJsonParser *parser, const char *key, uint16_t key_len,
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  // Pointers can be null (we handle that gracefully), but if they aren't, 
+  // they must be valid for reading/writing.
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_bool == \null || \valid(out_bool);
+
+  // Inherit the token validity requirements so okj_find_value_index is satisfied
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_bool == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_bool != \null;
+    // We are only allowed to modify the output struct
+    assigns *out_bool;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_NUMBER;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonBoolean *out_bool)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1715,6 +1805,36 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  // Pointers can be null (we handle that gracefully), but if they aren't, 
+  // they must be valid for reading/writing.
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_bool == \null || \valid(out_bool);
+
+  // Inherit the token validity requirements so okj_find_value_index is satisfied
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_bool == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_bool != \null;
+    // We are only allowed to modify the output struct
+    assigns *out_bool;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_POINTER;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_token(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonToken *out_tok)
 {
     OkjError result = OKJ_SUCCESS;

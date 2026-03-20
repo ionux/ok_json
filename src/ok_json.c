@@ -1823,6 +1823,27 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
     return copy_len;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior is_null:
+    assumes parser == \null;
+    ensures \result == 0;
+
+  behavior valid_parser:
+    assumes parser != \null;
+    // Mathematically guarantee the count never exceeds the token total
+    ensures \result <= parser->token_count;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 uint16_t okj_count_objects(const OkJsonParser *parser)
 {
     uint16_t count = 0U;
@@ -1831,6 +1852,15 @@ uint16_t okj_count_objects(const OkJsonParser *parser)
     {
         uint16_t i;
 
+        /*@
+          loop invariant 0 <= i <= parser->token_count;
+          
+          // Prove the count increments safely and never exceeds the current index
+          loop invariant count <= i;
+          
+          loop assigns i, count;
+          loop variant parser->token_count - i;
+        */
         for (i = 0U; i < parser->token_count; i++)
         {
             if (parser->tokens[i].type == OKJ_OBJECT)
@@ -1843,6 +1873,26 @@ uint16_t okj_count_objects(const OkJsonParser *parser)
     return count;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior is_null:
+    assumes parser == \null;
+    ensures \result == 0;
+
+  behavior valid_parser:
+    assumes parser != \null;
+    ensures \result <= parser->token_count;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 uint16_t okj_count_arrays(const OkJsonParser *parser)
 {
     uint16_t count = 0U;
@@ -1851,6 +1901,13 @@ uint16_t okj_count_arrays(const OkJsonParser *parser)
     {
         uint16_t i;
 
+        /*@
+          loop invariant 0 <= i <= parser->token_count;
+          loop invariant count <= i;
+          
+          loop assigns i, count;
+          loop variant parser->token_count - i;
+        */
         for (i = 0U; i < parser->token_count; i++)
         {
             if (parser->tokens[i].type == OKJ_ARRAY)
@@ -1863,6 +1920,25 @@ uint16_t okj_count_arrays(const OkJsonParser *parser)
     return count;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior is_null:
+    assumes parser == \null;
+    ensures \result == 0;
+
+  behavior valid_parser:
+    assumes parser != \null;
+    ensures \result == parser->token_count;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 uint16_t okj_count_elements(const OkJsonParser *parser)
 {
     uint16_t result = 0U;

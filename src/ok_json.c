@@ -1796,6 +1796,37 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires str == \null || \valid_read(str);
+  
+  // If the string object is valid and has a length, the data it points to MUST be readable.
+  requires str != \null && str->length > 0 ==> \valid_read(str->start + (0 .. str->length - 1));
+  
+  // If a buffer is provided, it MUST be safely writable up to buf_size.
+  requires buf != \null && buf_size > 0 ==> \valid(buf + (0 .. buf_size - 1));
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes str == \null || buf == \null || buf_size == 0;
+    assigns \nothing;
+    ensures \result == 0;
+
+  behavior valid_copy:
+    assumes str != \null && buf != \null && buf_size > 0;
+    
+    // The function is only allowed to modify the provided buffer up to buf_size.
+    assigns buf[0 .. buf_size - 1];
+    
+    // Prove the mathematical logic of the copy length boundary.
+    ensures \result == (str->length >= buf_size ? buf_size - 1 : str->length);
+    
+    // Prove the string is always safely null-terminated!
+    ensures buf[\result] == '\0';
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
 {
     uint16_t copy_len = 0U;
@@ -1812,6 +1843,16 @@ uint16_t okj_copy_string(const OkJsonString *str, char *buf, uint16_t buf_size)
 
         uint16_t i;
 
+        /*@
+          // LOOP INVARIANTS
+          // i never exceeds the bounded copy_len
+          loop invariant 0 <= i <= copy_len;
+          
+          // The loop only modifies the buffer and the index variable
+          loop assigns i, buf[0 .. copy_len - 1];
+          
+          loop variant copy_len - i;
+        */
         for (i = 0U; i < copy_len; i++)
         {
             buf[i] = str->start[i];

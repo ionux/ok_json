@@ -1811,7 +1811,7 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
   // they must be valid for reading/writing.
   requires parser == \null || \valid_read(parser);
   requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
-  requires out_bool == \null || \valid(out_bool);
+  requires out_tok == \null || \valid(out_tok);
 
   // Inherit the token validity requirements so okj_find_value_index is satisfied
   requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
@@ -1822,14 +1822,14 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
 
   // 2. Behaviors
   behavior invalid_args:
-    assumes parser == \null || key == \null || out_bool == \null;
+    assumes parser == \null || key == \null || out_tok == \null;
     assigns \nothing;
     ensures \result == OKJ_ERROR_BAD_POINTER;
 
   behavior valid_args:
-    assumes parser != \null && key != \null && out_bool != \null;
+    assumes parser != \null && key != \null && out_tok != \null;
     // We are only allowed to modify the output struct
-    assigns *out_bool;
+    assigns *out_tok;
     ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_POINTER;
 
   complete behaviors;

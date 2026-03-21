@@ -27,10 +27,6 @@
 #include "../include/ok_json.h"
 
 
-/* ---------------------------------------------------------------------------
- * Internal helpers — no external library dependencies
- * ---------------------------------------------------------------------------*/
-
 /*@
   // 1. Frame Condition
   // This function modifies absolutely no external memory.
@@ -418,12 +414,6 @@ static uint8_t okj_is_value_terminator(char c)
            okj_is_whitespace(c);
 }
 
-/* ---------------------------------------------------------------------------
- * Helpers for counting array elements and object members in the raw JSON
- * string.  These walk the source text so the counts are accurate even when
- * multiple values appear at the same nesting level.
- * ---------------------------------------------------------------------------*/
-
 /*@
   // 1. Preconditions
   requires p != \null && end != \null;
@@ -810,11 +800,6 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
     return length;
 }
-
-
-/* ---------------------------------------------------------------------------
- * Public API
- * ---------------------------------------------------------------------------*/
 
 /*@
   // 1. Preconditions
@@ -1635,10 +1620,6 @@ OkjError okj_parse(OkJsonParser *parser)
     return result;
 }
 
-/* ---------------------------------------------------------------------------
- * Internal lookup helper
- * ---------------------------------------------------------------------------*/
-
 /*@
   // 1. Preconditions
   requires parser == \null || \valid_read(parser);
@@ -1715,10 +1696,6 @@ static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint
 
     return result;
 }
-
-/* ---------------------------------------------------------------------------
- * Getter functions
- * ---------------------------------------------------------------------------*/
 
 /*@
   // 1. Preconditions
@@ -2267,9 +2244,9 @@ uint16_t okj_count_elements(const OkJsonParser *parser)
     return result;
 }
 
-/* ---------------------------------------------------------------------------
+/*
  * Debug print — only compiled when OK_JSON_DEBUG is defined
- * ---------------------------------------------------------------------------*/
+ */
 /* GCOVR_EXCL_START */
 #ifdef OK_JSON_DEBUG
 

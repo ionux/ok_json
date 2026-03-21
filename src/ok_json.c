@@ -424,18 +424,51 @@ static uint8_t okj_is_value_terminator(char c)
  * multiple values appear at the same nesting level.
  * ---------------------------------------------------------------------------*/
 
-/* Advance `p` past a JSON string (including both surrounding quotes).
- * `p` must point at the opening '"'.  `end` is one past the last valid byte
- * of the buffer.  Returns a pointer to the character immediately following
- * the closing '"', or to `end` on unterminated / truncated input.
- * Recognises backslash escapes so that \" inside a string does not
- * prematurely terminate the scan. */
+/*@
+  // 1. Preconditions
+  // The pointers must not be null, and we must have at least one byte to read.
+  // We use valid_read to tell the prover it is safe to read memory up to end - 1.
+  requires p != \null && end != \null;
+  requires p < end;
+  requires \valid_read(p .. end - 1);
+
+  // Semantically, the caller must only invoke this function on an opening quote.
+  requires *p == '"';
+
+  // 2. Frame Condition
+  // This is a pure scanning function; it modifies no external memory.
+  assigns \nothing;
+
+  // 3. Postconditions
+  // The returned pointer is guaranteed to be strictly greater than 'p' 
+  // (because we unconditionally skip the opening quote) and it is guaranteed 
+  // NEVER to exceed the 'end' pointer, even on truncated inputs or malicious escapes.
+  ensures \result > p && \result <= end;
+*/
 static const char *okj_skip_string(const char *p, const char *end)
 {
+    /* Advance `p` past a JSON string (including both surrounding quotes).
+     * `p` must point at the opening '"'.  `end` is one past the last valid byte
+     * of the buffer.  Returns a pointer to the character immediately following
+     * the closing '"', or to `end` on unterminated / truncated input.
+     * Recognises backslash escapes so that \" inside a string does not
+     * prematurely terminate the scan. */
+    
     const char *scan = p;
 
     scan++;   /* skip opening '"' */
 
+    /*@
+      // LOOP INVARIANTS
+      // Prove that 'scan' always remains within the safe bounds.
+      loop invariant p + 1 <= scan <= end;
+      
+      // Explicitly state which local variable is modified by the loop.
+      loop assigns scan;
+      
+      // Prove loop termination by showing the distance between scan and end strictly decreases.
+      loop variant end - scan;
+    */
     while ((scan < end) && (*scan != '"'))
     {
         if (*scan == '\\')

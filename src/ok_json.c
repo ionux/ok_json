@@ -430,7 +430,10 @@ static uint8_t okj_is_value_terminator(char c)
   // We use valid_read to tell the prover it is safe to read memory up to end - 1.
   requires p != \null && end != \null;
   requires p < end;
-  requires \valid_read(p .. end - 1);
+
+  // Use integer offset range from the base pointer 'p'.
+  // We prove it is safe to read from offset 0 up to the distance between the pointers minus 1.
+  requires \valid_read(p + (0 .. (end - p) - 1));
 
   // Semantically, the caller must only invoke this function on an opening quote.
   requires *p == '"';

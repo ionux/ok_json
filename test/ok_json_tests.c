@@ -4361,8 +4361,10 @@ void test_static_count_array_null_guard(void)
     /* okj_count_array_elements() returns 0 when passed NULL or a pointer
      * that does not begin with '['.  Direct call now that ok_json.c is
      * included as a single translation unit. */
-    assert(okj_count_array_elements(NULL) == 0U);
-    assert(okj_count_array_elements("not-an-array") == 0U);
+    char not_arr[] = "not-an-array";
+
+    assert(okj_count_array_elements(NULL, NULL) == 0U);
+    assert(okj_count_array_elements(not_arr, not_arr + (sizeof(not_arr) - 1U)) == 0U);
 
     printf("test_static_count_array_null_guard passed!\n");
 }
@@ -4371,8 +4373,10 @@ void test_static_count_object_null_guard(void)
 {
     /* okj_count_object_members() returns 0 when passed NULL or a pointer
      * that does not begin with '{'. */
-    assert(okj_count_object_members(NULL) == 0U);
-    assert(okj_count_object_members("not-an-object") == 0U);
+    char not_obj[] = "not-an-object";
+
+    assert(okj_count_object_members(NULL, NULL) == 0U);
+    assert(okj_count_object_members(not_obj, not_obj + (sizeof(not_obj) - 1U)) == 0U);
 
     printf("test_static_count_object_null_guard passed!\n");
 }
@@ -4381,8 +4385,10 @@ void test_static_measure_container_null_guard(void)
 {
     /* okj_measure_container() returns 0 when passed NULL or a pointer that
      * does not begin with '[' or '{'. */
-    assert(okj_measure_container(NULL) == 0U);
-    assert(okj_measure_container("not-a-container") == 0U);
+    char not_cont[] = "not-a-container";
+
+    assert(okj_measure_container(NULL, NULL) == 0U);
+    assert(okj_measure_container(not_cont, not_cont + (sizeof(not_cont) - 1U)) == 0U);
 
     printf("test_static_measure_container_null_guard passed!\n");
 }
@@ -4780,16 +4786,16 @@ void test_skip_string_backslash_escape(void)
 {
     /* okj_skip_string() is a static function visible because ok_json.c is
      * included directly.  Feed it a quoted string that contains a backslash
-     * escape sequence (e.g. \n) so that the backslash-skip branch at line 234
-     * is taken and the NUL check at line 236 evaluates to false. */
+     * escape sequence (e.g. \n) so that the backslash-skip branch is taken
+     * and the end-of-buffer check evaluates to false. */
 
     /* Raw bytes: " \ n " NUL  →  \"\\n\" in C notation */
     char s[] = "\"\\n\"";
 
-    const char *end = okj_skip_string(s);
+    const char *result = okj_skip_string(s, s + (sizeof(s) - 1U));
 
     /* Should advance past both characters of the escape and the closing quote */
-    assert(*end == '\0');
+    assert(*result == '\0');
 
     printf("test_skip_string_backslash_escape passed!\n");
 }
@@ -4797,16 +4803,16 @@ void test_skip_string_backslash_escape(void)
 void test_skip_string_backslash_at_eof(void)
 {
     /* Feed okj_skip_string() a string that ends with a lone backslash
-     * (no following escape character).  The NUL check at line 236 must
-     * evaluate to true and trigger the break at line 238.
+     * (no following escape character).  The end-of-buffer check must
+     * trigger the break when the scan reaches the buffer boundary.
      *
      * Raw bytes: "  a  \  NUL  — the string is never closed. */
     char s[] = {'"', 'a', '\\', '\0'};
 
-    const char *end = okj_skip_string(s);
+    const char *result = okj_skip_string(s, s + (sizeof(s) - 1U));
 
-    /* Scan stops at the NUL after the lone backslash */
-    assert(*end == '\0');
+    /* Scan stops at the buffer boundary; the byte there is the NUL */
+    assert(*result == '\0');
 
     printf("test_skip_string_backslash_at_eof passed!\n");
 }
@@ -4822,7 +4828,7 @@ void test_measure_container_escape_in_string(void)
      * Length: 8 characters inclusive of brackets. */
     char s[] = "[\"a\\nb\"]";
 
-    uint16_t len = okj_measure_container(s);
+    uint16_t len = okj_measure_container(s, s + (sizeof(s) - 1U));
 
     assert(len == 8U);
 
@@ -4839,8 +4845,8 @@ void test_measure_container_escape_at_eof(void)
     char s[] = {'[', '"', 'a', '\\', '\0'};
 
     /* The function must not crash; it returns whatever it measured before
-     * hitting NUL (the while loop exits because *p == '\0'). */
-    uint16_t len = okj_measure_container(s);
+     * hitting the buffer boundary (the while loop exits because p >= end). */
+    uint16_t len = okj_measure_container(s, s + (sizeof(s) - 1U));
 
     /* At minimum the opening '[' was counted (length >= 1). */
     assert(len >= 1U);

@@ -425,32 +425,33 @@ static uint8_t okj_is_value_terminator(char c)
  * ---------------------------------------------------------------------------*/
 
 /* Advance `p` past a JSON string (including both surrounding quotes).
- * `p` must point at the opening '"'.  Returns a pointer to the character
- * immediately following the closing '"', or to '\0' on unterminated input.
+ * `p` must point at the opening '"'.  `end` is one past the last valid byte
+ * of the buffer.  Returns a pointer to the character immediately following
+ * the closing '"', or to `end` on unterminated / truncated input.
  * Recognises backslash escapes so that \" inside a string does not
  * prematurely terminate the scan. */
-static const char *okj_skip_string(const char *p)
+static const char *okj_skip_string(const char *p, const char *end)
 {
     const char *scan = p;
 
     scan++;   /* skip opening '"' */
 
-    while ((*scan != '"') && (*scan != '\0'))
+    while ((scan < end) && (*scan != '"'))
     {
         if (*scan == '\\')
         {
             scan++;    /* skip the backslash */
 
-            if (*scan == '\0')
+            if (scan >= end)
             {
-                break;  /* truncated input: backslash at end of stream */
+                break;  /* truncated input: backslash at end of buffer */
             }
         }
 
         scan++;
     }
 
-    if (*scan == '"')
+    if ((scan < end) && (*scan == '"'))
     {
         scan++;    /* skip closing '"' */
     }
@@ -459,10 +460,11 @@ static const char *okj_skip_string(const char *p)
 }
 
 /* Count the number of elements in a JSON array whose text begins at `start`
- * (which must point to the '[' character).  Handles nested arrays and objects
- * correctly by tracking bracket depth, and skips string content to avoid
- * counting structural characters that appear inside quoted values. */
-static uint16_t okj_count_array_elements(const char *start)
+ * (which must point to the '[' character).  `end` is one past the last valid
+ * byte of the buffer.  Handles nested arrays and objects correctly by tracking
+ * bracket depth, and skips string content to avoid counting structural
+ * characters that appear inside quoted values. */
+static uint16_t okj_count_array_elements(const char *start, const char *end)
 {
     const char *p = start;
 
@@ -476,14 +478,14 @@ static uint16_t okj_count_array_elements(const char *start)
 
         uint8_t  seen  = 0U;    /* set when first non-whitespace element is found */
 
-        while ((*p != '\0') && (depth > 0U))
+        while ((p < end) && (depth > 0U))
         {
             char c = *p;
 
             if (c == '"')
             {
                 /* Skip string content so commas inside strings are not counted. */
-                p = okj_skip_string(p);
+                p = okj_skip_string(p, end);
 
                 if ((depth == 1U) && (seen == 0U))
                 {
@@ -533,9 +535,10 @@ static uint16_t okj_count_array_elements(const char *start)
 }
 
 /* Count the number of key-value members in a JSON object whose text begins
- * at `start` (which must point to the '{' character).  Each colon at depth 1
- * corresponds to exactly one member. */
-static uint16_t okj_count_object_members(const char *start)
+ * at `start` (which must point to the '{' character).  `end` is one past the
+ * last valid byte of the buffer.  Each colon at depth 1 corresponds to
+ * exactly one member. */
+static uint16_t okj_count_object_members(const char *start, const char *end)
 {
     const char *p = start;
 
@@ -547,14 +550,14 @@ static uint16_t okj_count_object_members(const char *start)
 
         uint16_t depth = 1U;
 
-        while ((*p != '\0') && (depth > 0U))
+        while ((p < end) && (depth > 0U))
         {
             char c = *p;
 
             if (c == '"')
             {
                 /* Skip string content so colons inside keys/values are ignored. */
-                p = okj_skip_string(p);
+                p = okj_skip_string(p, end);
             }
             else
             {
@@ -584,11 +587,12 @@ static uint16_t okj_count_object_members(const char *start)
 }
 
 /* Measure the full byte length of a JSON array or object starting at `start`
- * (which must point to '[' or '{').  Returns the count of bytes from the
- * opening bracket to the matching closing bracket, inclusive.  String content
- * is skipped so that structural characters inside quoted values are ignored.
+ * (which must point to '[' or '{').  `end` is one past the last valid byte of
+ * the buffer.  Returns the count of bytes from the opening bracket to the
+ * matching closing bracket, inclusive.  String content is skipped so that
+ * structural characters inside quoted values are ignored.
  * Returns 0 if `start` is NULL or does not begin with '[' or '{'. */
-static uint16_t okj_measure_container(const char *start)
+static uint16_t okj_measure_container(const char *start, const char *end)
 {
     const char *p = start;
 
@@ -598,7 +602,7 @@ static uint16_t okj_measure_container(const char *start)
     {
         uint16_t depth  = 0U;
 
-        while (*p != '\0')
+        while (p < end)
         {
             char c = *p;
 
@@ -609,13 +613,13 @@ static uint16_t okj_measure_container(const char *start)
                 /* Skip past the opening quote (already counted above). */
                 p++;
 
-                while ((*p != '\0') && (*p != '"'))
+                while ((p < end) && (*p != '"'))
                 {
                     if (*p == '\\')
                     {
                         p++;
 
-                        if (*p != '\0')
+                        if (p < end)
                         {
                             length++;
                             p++;
@@ -630,7 +634,7 @@ static uint16_t okj_measure_container(const char *start)
                 }
 
                 /* Count the closing quote if present, then continue. */
-                if (*p == '"')
+                if ((p < end) && (*p == '"'))
                 {
                     length++;
                     p++;
@@ -1759,9 +1763,11 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, 
         }
         else
         {
+            const char *end = parser->json + parser->json_len;
+
             out_arr->start  = parser->tokens[idx].start;
-            out_arr->count  = okj_count_array_elements(parser->tokens[idx].start);
-            out_arr->length = okj_measure_container(parser->tokens[idx].start);
+            out_arr->count  = okj_count_array_elements(parser->tokens[idx].start, end);
+            out_arr->length = okj_measure_container(parser->tokens[idx].start, end);
 
             if (out_arr->count > OKJ_MAX_ARRAY_SIZE)
             {
@@ -1791,9 +1797,11 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
         }
         else
         {
+            const char *end = parser->json + parser->json_len;
+
             out_obj->start  = parser->tokens[idx].start;
-            out_obj->count  = okj_count_object_members(parser->tokens[idx].start);
-            out_obj->length = okj_measure_container(parser->tokens[idx].start);
+            out_obj->count  = okj_count_object_members(parser->tokens[idx].start, end);
+            out_obj->length = okj_measure_container(parser->tokens[idx].start, end);
 
             if (out_obj->count > OKJ_MAX_OBJECT_SIZE)
             {
@@ -1880,9 +1888,11 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
         }
         else
         {
+            const char *end = parser->json + parser->json_len;
+
             out_arr->start  = parser->tokens[idx].start;
-            out_arr->count  = okj_count_array_elements(parser->tokens[idx].start);
-            out_arr->length = okj_measure_container(parser->tokens[idx].start);
+            out_arr->count  = okj_count_array_elements(parser->tokens[idx].start, end);
+            out_arr->length = okj_measure_container(parser->tokens[idx].start, end);
         }
     }
 
@@ -1907,9 +1917,11 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_
         }
         else
         {
+            const char *end = parser->json + parser->json_len;
+
             out_obj->start  = parser->tokens[idx].start;
-            out_obj->count  = okj_count_object_members(parser->tokens[idx].start);
-            out_obj->length = okj_measure_container(parser->tokens[idx].start);
+            out_obj->count  = okj_count_object_members(parser->tokens[idx].start, end);
+            out_obj->length = okj_measure_container(parser->tokens[idx].start, end);
         }
     }
 
@@ -2176,7 +2188,7 @@ void okj_debug_print(OkJsonParser *parser)
 
                 if ((t->type == OKJ_OBJECT) || (t->type == OKJ_ARRAY))
                 {
-                    dlen = okj_measure_container(t->start);
+                    dlen = okj_measure_container(t->start, parser->json + parser->json_len);
                 }
 
                 (void)printf("[%3u] type=%-9s len=%3u  val='",

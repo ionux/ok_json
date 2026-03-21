@@ -495,13 +495,29 @@ static const char *okj_skip_string(const char *p, const char *end)
     return scan;
 }
 
-/* Count the number of elements in a JSON array whose text begins at `start`
- * (which must point to the '[' character).  `end` is one past the last valid
- * byte of the buffer.  Handles nested arrays and objects correctly by tracking
- * bracket depth, and skips string content to avoid counting structural
- * characters that appear inside quoted values. */
+/*@
+  // 1. Preconditions
+  // Standard safe-buffer requirements using integer offsets.
+  requires start != \null && end != \null;
+  requires \base_addr(start) == \base_addr(end);
+  requires end - start > 0;
+  requires \valid_read(start + (0 .. end - start - 1));
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Postconditions
+  // The number of elements can never exceed the total number of bytes in the buffer.
+  ensures \result <= end - start;
+*/
 static uint16_t okj_count_array_elements(const char *start, const char *end)
 {
+    /* Count the number of elements in a JSON array whose text begins at `start`
+     * (which must point to the '[' character).  `end` is one past the last valid
+     * byte of the buffer.  Handles nested arrays and objects correctly by tracking
+     * bracket depth, and skips string content to avoid counting structural
+     * characters that appear inside quoted values. */
+
     const char *p = start;
 
     uint16_t count = 0U;
@@ -514,6 +530,18 @@ static uint16_t okj_count_array_elements(const char *start, const char *end)
 
         uint8_t  seen  = 0U;    /* set when first non-whitespace element is found */
 
+        /*@
+          // LOOP INVARIANTS
+          // Prove the pointer stays within the original memory block and bounds.
+          loop invariant start <= p <= end;
+          loop invariant \base_addr(p) == \base_addr(start);
+          
+          // Prove the element count never mathematically overflows the bytes processed.
+          loop invariant count <= p - start;
+          
+          loop assigns p, depth, seen, count;
+          loop variant end - p;
+        */
         while ((p < end) && (depth > 0U))
         {
             char c = *p;

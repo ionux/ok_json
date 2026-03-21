@@ -110,12 +110,33 @@ pointers retrieved from the parser.
 Tokenizes the bound JSON text and returns a status code.  On success,
 `parser->tokens` and `parser->token_count` are populated.
 
+Possible return codes:
+
+| Code | Condition |
+|------|-----------|
+| `OKJ_SUCCESS` | Parse completed; tokens are valid |
+| `OKJ_ERROR_BAD_POINTER` | `parser` is `NULL` |
+| `OKJ_ERROR_MAX_JSON_LEN_EXCEEDED` | `json_len` exceeds `OKJ_MAX_JSON_LEN` |
+| `OKJ_ERROR_SYNTAX` | Trailing non-whitespace after the top-level value |
+| `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | Token array full before input was consumed |
+| `OKJ_ERROR_UNEXPECTED_END` | Unclosed containers or empty/whitespace-only input |
+| `OKJ_ERROR_INVALID_CHARACTER` | Unexpected character in the input stream |
+| `OKJ_ERROR_BAD_NUMBER` | Malformed numeric literal |
+| `OKJ_ERROR_BAD_STRING` | Malformed string literal |
+| `OKJ_ERROR_BAD_BOOLEAN` | Malformed boolean literal |
+| `OKJ_ERROR_BRACKET_MISMATCH` | Mismatched opening/closing bracket or brace |
+| `OKJ_ERROR_MAX_DEPTH_EXCEEDED` | Nesting depth exceeds `OKJ_MAX_DEPTH` |
+| `OKJ_ERROR_MAX_STR_LEN_EXCEEDED` | Key or string token exceeds `OKJ_MAX_STRING_LEN` |
+
 ## Key-based getters
 
 Each getter scans for an `OKJ_STRING` token whose content matches `key`, then
 writes the immediately following token into a caller-supplied output struct.
-All getters return `OkjError` — `OKJ_SUCCESS` on success, or the appropriate
-error code on a missing key, type mismatch, or bad argument.
+All getters return `OkjError` — `OKJ_SUCCESS` on success, or an error code on
+a missing key, type mismatch, or bad argument.  `key_len` is the byte length
+of the key string (excluding any null terminator).
+
+**All getters return `OKJ_ERROR_BAD_POINTER` when any pointer argument is `NULL`.**
 
 ```c
 OkjError okj_get_string (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonString  *out_str);
@@ -126,11 +147,27 @@ OkjError okj_get_object (OkJsonParser *parser, const char *key, uint16_t key_len
 OkjError okj_get_token  (OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonToken   *out_tok);
 ```
 
-`key_len` is the byte length of the key string (excluding any null terminator).
+### Per-getter return codes
 
-`okj_get_array` and `okj_get_object` enforce `OKJ_MAX_ARRAY_SIZE` and
-`OKJ_MAX_OBJECT_SIZE` respectively and return `OKJ_ERROR_BAD_ARRAY` /
-`OKJ_ERROR_BAD_OBJECT` when the container exceeds the limit.
+| Getter | Not-found or type-mismatch code |
+|--------|--------------------------------|
+| `okj_get_string` | `OKJ_ERROR_BAD_STRING` |
+| `okj_get_number` | `OKJ_ERROR_BAD_NUMBER` |
+| `okj_get_boolean` | `OKJ_ERROR_BAD_BOOLEAN` |
+| `okj_get_array` | `OKJ_ERROR_BAD_ARRAY` |
+| `okj_get_object` | `OKJ_ERROR_BAD_OBJECT` |
+| `okj_get_token` | `OKJ_ERROR_BAD_POINTER` (no type-specific code; any value type is accepted) |
+
+**`okj_get_token` note:** unlike the other getters, `okj_get_token` accepts any
+value type — it returns the raw token regardless of its `OkJsonType`.  When the
+key is not found, it returns `OKJ_ERROR_BAD_POINTER` (the same code used for
+NULL arguments), not a type-specific error.
+
+**`okj_get_array` and `okj_get_object` partial-write note:** when the element
+or member count exceeds `OKJ_MAX_ARRAY_SIZE` / `OKJ_MAX_OBJECT_SIZE`, the
+output struct fields (`start`, `count`, `length`) are still written before the
+limit check fires and `OKJ_ERROR_BAD_ARRAY` / `OKJ_ERROR_BAD_OBJECT` is
+returned.  Always check the return code before using the output struct.
 
 ### Raw container getters
 
@@ -141,7 +178,9 @@ OkjError okj_get_array_raw (OkJsonParser *parser, const char *key, uint16_t key_
 OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj);
 ```
 
-Use raw variants when you need the exact source span of a large container.
+Return codes mirror the non-raw variants (`OKJ_ERROR_BAD_ARRAY` /
+`OKJ_ERROR_BAD_OBJECT`) but without any size limit check.  Use raw variants
+when you need the exact source span of a large container.
 
 ### String copy helper
 

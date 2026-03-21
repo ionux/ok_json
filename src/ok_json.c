@@ -537,11 +537,13 @@ static uint16_t okj_count_array_elements(const char *start, const char *end)
           loop invariant \base_addr(p) == \base_addr(start);
           
           // 2. SMT-friendly integer offset bounds.
-          // Since we did p++ before the loop, the distance is at least 1.
           loop invariant 1 <= p - start <= end - start;
           
-          // 3. Element count never mathematically overflows the bytes processed.
-          loop invariant count <= p - start;
+          // 3. During the loop, 'count' tracks commas. Since the opening '[' 
+          // took 1 byte, and each comma takes 1 byte, 'count' is strictly less than 
+          // the number of bytes processed. This leaves room for the final count++!
+          // Ah, the pedantry!!!!!!! :D
+          loop invariant count < p - start;
           
           loop assigns p, depth, seen, count;
           loop variant end - p;

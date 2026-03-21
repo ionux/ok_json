@@ -426,26 +426,26 @@ static uint8_t okj_is_value_terminator(char c)
 
 /*@
   // 1. Preconditions
-  // The pointers must not be null, and we must have at least one byte to read.
-  // We use valid_read to tell the prover it is safe to read memory up to end - 1.
   requires p != \null && end != \null;
-  requires p < end;
-
-  // Use integer offset range from the base pointer 'p'.
-  // We prove it is safe to read from offset 0 up to the distance between the pointers minus 1.
-  requires \valid_read(p + (0 .. (end - p) - 1));
-
-  // Semantically, the caller must only invoke this function on an opening quote.
+  
+  // Explicitly tell the solver they share the exact same memory block base
+  requires \base_addr(p) == \base_addr(end);
+  
+  // Use integer math for the distance, which is mathematically rigorous for the solver
+  requires end - p > 0;
+  
+  // The safe read boundary is strictly tied to that integer distance
+  requires \valid_read(p + (0 .. end - p - 1));
+  
+  // The caller must only invoke this function on an opening quote
   requires *p == '"';
 
-  // 2. Frame Condition
-  // This is a pure scanning function; it modifies no external memory.
-  assigns \nothing;
+  // 2. Frame Condition & Pointer Dependency
+  // This satisfies the pedantic warning by telling WP where the returned pointer comes from, 
+  // while still implicitly meaning "no external memory is modified."
+  assigns \result \from p, end;
 
   // 3. Postconditions
-  // The returned pointer is guaranteed to be strictly greater than 'p' 
-  // (because we unconditionally skip the opening quote) and it is guaranteed 
-  // NEVER to exceed the 'end' pointer, even on truncated inputs or malicious escapes.
   ensures \result > p && \result <= end;
 */
 static const char *okj_skip_string(const char *p, const char *end)
@@ -463,13 +463,13 @@ static const char *okj_skip_string(const char *p, const char *end)
 
     /*@
       // LOOP INVARIANTS
-      // Prove that 'scan' always remains within the safe bounds.
-      loop invariant p + 1 <= scan <= end;
+      // Prove scan stays in the same memory block
+      loop invariant \base_addr(scan) == \base_addr(p);
       
-      // Explicitly state which local variable is modified by the loop.
+      // Use integer offsets for the boundaries so Alt-Ergo doesn't timeout!
+      loop invariant 1 <= scan - p <= end - p;
+      
       loop assigns scan;
-      
-      // Prove loop termination by showing the distance between scan and end strictly decreases.
       loop variant end - scan;
     */
     while ((scan < end) && (*scan != '"'))

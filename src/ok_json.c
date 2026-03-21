@@ -447,6 +447,7 @@ static uint8_t okj_is_value_terminator(char c)
 
   // 3. Postconditions
   ensures \result > p && \result <= end;
+  ensures \base_addr(\result) == \base_addr(p);
 */
 static const char *okj_skip_string(const char *p, const char *end)
 {
@@ -532,11 +533,14 @@ static uint16_t okj_count_array_elements(const char *start, const char *end)
 
         /*@
           // LOOP INVARIANTS
-          // Prove the pointer stays within the original memory block and bounds.
-          loop invariant start <= p <= end;
+          // 1. Memory block anchor is preserved
           loop invariant \base_addr(p) == \base_addr(start);
           
-          // Prove the element count never mathematically overflows the bytes processed.
+          // 2. SMT-friendly integer offset bounds.
+          // Since we did p++ before the loop, the distance is at least 1.
+          loop invariant 1 <= p - start <= end - start;
+          
+          // 3. Element count never mathematically overflows the bytes processed.
           loop invariant count <= p - start;
           
           loop assigns p, depth, seen, count;

@@ -604,12 +604,28 @@ static uint16_t okj_count_array_elements(const char *start, const char *end)
     return count;
 }
 
-/* Count the number of key-value members in a JSON object whose text begins
- * at `start` (which must point to the '{' character).  `end` is one past the
- * last valid byte of the buffer.  Each colon at depth 1 corresponds to
- * exactly one member. */
+/*@
+  // 1. Preconditions
+  // Standard safe-buffer requirements using integer offsets.
+  requires start != \null && end != \null;
+  requires \base_addr(start) == \base_addr(end);
+  requires end - start > 0;
+  requires \valid_read(start + (0 .. end - start - 1));
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Postconditions
+  // The number of members can never exceed the total number of bytes in the buffer.
+  ensures \result <= end - start;
+*/
 static uint16_t okj_count_object_members(const char *start, const char *end)
 {
+  /* Count the number of key-value members in a JSON object whose text begins
+   * at `start` (which must point to the '{' character).  `end` is one past the
+   * last valid byte of the buffer.  Each colon at depth 1 corresponds to
+   * exactly one member. */
+  
     const char *p = start;
 
     uint16_t count = 0U;
@@ -620,6 +636,22 @@ static uint16_t okj_count_object_members(const char *start, const char *end)
 
         uint16_t depth = 1U;
 
+        /*@
+          // LOOP INVARIANTS
+          // 1. Memory block anchor is preserved
+          loop invariant \base_addr(p) == \base_addr(start);
+
+          // 2. SMT-friendly integer offset bounds.
+          loop invariant 1 <= p - start <= end - start;
+
+          // 3. 'count' tracks colons at depth 1. Since the opening '{' 
+          // took 1 byte, and each member requires at least 1 colon, 
+          // 'count' is strictly less than the number of bytes processed.
+          loop invariant count < p - start;
+
+          loop assigns p, depth, count;
+          loop variant end - p;
+        */
         while ((p < end) && (depth > 0U))
         {
             char c = *p;

@@ -688,14 +688,30 @@ static uint16_t okj_count_object_members(const char *start, const char *end)
     return count;
 }
 
-/* Measure the full byte length of a JSON array or object starting at `start`
- * (which must point to '[' or '{').  `end` is one past the last valid byte of
- * the buffer.  Returns the count of bytes from the opening bracket to the
- * matching closing bracket, inclusive.  String content is skipped so that
- * structural characters inside quoted values are ignored.
- * Returns 0 if `start` is NULL or does not begin with '[' or '{'. */
+/*@
+  // 1. Preconditions
+  // Standard safe-buffer requirements using integer offsets.
+  requires start != \null && end != \null;
+  requires \base_addr(start) == \base_addr(end);
+  requires end - start > 0;
+  requires \valid_read(start + (0 .. end - start - 1));
+
+  // 2. Frame Condition
+  assigns \nothing;
+
+  // 3. Postconditions
+  // The length can never exceed the total number of bytes in the buffer.
+  ensures \result <= end - start;
+*/
 static uint16_t okj_measure_container(const char *start, const char *end)
 {
+    /* Measure the full byte length of a JSON array or object starting at `start`
+     * (which must point to '[' or '{').  `end` is one past the last valid byte of
+     * the buffer.  Returns the count of bytes from the opening bracket to the
+     * matching closing bracket, inclusive.  String content is skipped so that
+     * structural characters inside quoted values are ignored.
+     * Returns 0 if `start` is NULL or does not begin with '[' or '{'. */
+
     const char *p = start;
 
     uint16_t length = 0U;
@@ -704,6 +720,20 @@ static uint16_t okj_measure_container(const char *start, const char *end)
     {
         uint16_t depth  = 0U;
 
+        /*@
+          // OUTER LOOP INVARIANTS
+          // 1. Memory block anchor is preserved
+          loop invariant \base_addr(p) == \base_addr(start);
+          
+          // 2. SMT-friendly integer offset bounds
+          loop invariant 0 <= p - start <= end - start;
+          
+          // 3. Strict equality: 'length' increments with 'p'.
+          loop invariant length == p - start;
+          
+          loop assigns p, depth, length;
+          loop variant end - p;
+        */
         while (p < end)
         {
             char c = *p;
@@ -715,6 +745,17 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 /* Skip past the opening quote (already counted above). */
                 p++;
 
+                /*@
+                  // INNER LOOP INVARIANTS
+                  // Re-assert the memory bounds and lockstep equality 
+                  // for the inner string-skipping loop.
+                  loop invariant \base_addr(p) == \base_addr(start);
+                  loop invariant 0 <= p - start <= end - start;
+                  loop invariant length == p - start;
+                  
+                  loop assigns p, length;
+                  loop variant end - p;
+                */
                 while ((p < end) && (*p != '"'))
                 {
                     if (*p == '\\')

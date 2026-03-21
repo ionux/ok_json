@@ -60,7 +60,7 @@ if (okj_get_boolean(&parser, "valid", 5U, &valid) == OKJ_SUCCESS) {
 /* 4. Copy a string value into a caller-supplied buffer */
 char buf[32];
 if (okj_get_string(&parser, "unit", 4U, &unit) == OKJ_SUCCESS) {
-    okj_copy_string(&unit, buf, sizeof(buf)); /* buf == "C\0" */
+    okj_copy_string(&unit, buf, (uint16_t)sizeof(buf)); /* buf == "C\0" */
 }
 ```
 
@@ -77,27 +77,27 @@ All getter functions return an `OkjError` code and write their result into a cal
 
 ### Value Getters
 
-Each getter writes its result into a caller-supplied struct and returns an `OkjError` code.
+Each getter returns `OkjError` and writes its result into a caller-supplied output struct.  All getters return `OKJ_ERROR_BAD_POINTER` when any pointer argument is `NULL`.
 
-| Function | Out-param type | Notes |
-|----------|---------------|-------|
-| `okj_get_string(parser, key, key_len, out_str)` | `OkJsonString *` | quotes excluded |
-| `okj_get_number(parser, key, key_len, out_num)` | `OkJsonNumber *` | raw numeric text |
-| `okj_get_boolean(parser, key, key_len, out_bool)` | `OkJsonBoolean *` | `"true"` or `"false"` literal |
-| `okj_get_array(parser, key, key_len, out_arr)` | `OkJsonArray *` | enforces `OKJ_MAX_ARRAY_SIZE` |
-| `okj_get_object(parser, key, key_len, out_obj)` | `OkJsonObject *` | enforces `OKJ_MAX_OBJECT_SIZE` |
-| `okj_get_array_raw(parser, key, key_len, out_arr)` | `OkJsonArray *` | full raw array text, no size limit |
-| `okj_get_object_raw(parser, key, key_len, out_obj)` | `OkJsonObject *` | full raw object text, no size limit |
-| `okj_get_token(parser, key, key_len, out_tok)` | `OkJsonToken *` | raw token from the parser's token array |
+| Function | Output struct | On success | On failure (non-NULL args) |
+|----------|--------------|------------|---------------------------|
+| `okj_get_string(parser, key, key_len, out_str)` | `OkJsonString *` | `OKJ_SUCCESS`; content excludes surrounding quotes | `OKJ_ERROR_BAD_STRING` — key not found or value is not a string |
+| `okj_get_number(parser, key, key_len, out_num)` | `OkJsonNumber *` | `OKJ_SUCCESS`; raw numeric text | `OKJ_ERROR_BAD_NUMBER` — key not found or value is not a number |
+| `okj_get_boolean(parser, key, key_len, out_bool)` | `OkJsonBoolean *` | `OKJ_SUCCESS`; `"true"` or `"false"` literal | `OKJ_ERROR_BAD_BOOLEAN` — key not found or value is not a boolean |
+| `okj_get_array(parser, key, key_len, out_arr)` | `OkJsonArray *` | `OKJ_SUCCESS`; enforces `OKJ_MAX_ARRAY_SIZE` | `OKJ_ERROR_BAD_ARRAY` — key not found, not an array, or element count exceeds `OKJ_MAX_ARRAY_SIZE` |
+| `okj_get_object(parser, key, key_len, out_obj)` | `OkJsonObject *` | `OKJ_SUCCESS`; enforces `OKJ_MAX_OBJECT_SIZE` | `OKJ_ERROR_BAD_OBJECT` — key not found, not an object, or member count exceeds `OKJ_MAX_OBJECT_SIZE` |
+| `okj_get_array_raw(parser, key, key_len, out_arr)` | `OkJsonArray *` | `OKJ_SUCCESS`; full raw array span, no size limit | `OKJ_ERROR_BAD_ARRAY` — key not found or value is not an array |
+| `okj_get_object_raw(parser, key, key_len, out_obj)` | `OkJsonObject *` | `OKJ_SUCCESS`; full raw object span, no size limit | `OKJ_ERROR_BAD_OBJECT` — key not found or value is not an object |
+| `okj_get_token(parser, key, key_len, out_tok)` | `OkJsonToken *` | `OKJ_SUCCESS`; raw token copied from parser token array | `OKJ_ERROR_BAD_POINTER` — key not found (no type-specific code) |
 
 ### Utilities
 
-| Function | Description |
-|----------|-------------|
-| `okj_copy_string(str, buf, buf_size)` | Copy string content into a caller buffer with NUL termination |
-| `okj_count_objects(parser)` | Count all `OKJ_OBJECT` tokens in the parsed result |
-| `okj_count_arrays(parser)` | Count all `OKJ_ARRAY` tokens in the parsed result |
-| `okj_count_elements(parser)` | Return the total token count (`parser->token_count`) |
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `okj_copy_string(str, buf, buf_size)` | `uint16_t` | Copy string content into a caller-supplied buffer with NUL termination; returns bytes copied (excluding NUL), or `0` on error |
+| `okj_count_objects(parser)` | `uint16_t` | Count all `OKJ_OBJECT` tokens in the parsed result, including nested objects; returns `0` if `parser` is `NULL` |
+| `okj_count_arrays(parser)` | `uint16_t` | Count all `OKJ_ARRAY` tokens in the parsed result, including nested arrays; returns `0` if `parser` is `NULL` |
+| `okj_count_elements(parser)` | `uint16_t` | Return the total token count (equivalent to `parser->token_count`); returns `0` if `parser` is `NULL` |
 
 ### Debug (compile with `-DOK_JSON_DEBUG`)
 

@@ -1865,6 +1865,46 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_arr == \null || \valid(out_arr);
+
+  // Guarantee the output pointer doesn't alias the inputs to prevent timeouts
+  requires \separated(out_arr, parser, key + (0 .. key_len - 1));
+
+  // Inherit the token validity requirements so okj_find_value_index is satisfied
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  
+  // The JSON payload must be safely readable
+  requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  // The SMT solver needs to know that every stored token mathematically 
+  // resides within the bounds of the main JSON buffer so that the helper 
+  // functions (which rely on base_addr comparisons) can be proven safe.
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \base_addr(parser->tokens[k].start) == \base_addr(parser->json) &&
+        parser->tokens[k].start >= parser->json &&
+        parser->tokens[k].start < parser->json + parser->json_len);
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_arr == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_arr != \null;
+    // We are only allowed to modify the output struct
+    assigns *out_arr;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_ARRAY;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1899,6 +1939,38 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, 
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_obj == \null || \valid(out_obj);
+
+  requires \separated(out_obj, parser, key + (0 .. key_len - 1));
+
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \base_addr(parser->tokens[k].start) == \base_addr(parser->json) &&
+        parser->tokens[k].start >= parser->json &&
+        parser->tokens[k].start < parser->json + parser->json_len);
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_obj == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_obj != \null;
+    assigns *out_obj;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_OBJECT;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1990,6 +2062,38 @@ OkjError okj_get_token(OkJsonParser *parser, const char *key, uint16_t key_len, 
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_arr == \null || \valid(out_arr);
+
+  requires \separated(out_arr, parser, key + (0 .. key_len - 1));
+
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \base_addr(parser->tokens[k].start) == \base_addr(parser->json) &&
+        parser->tokens[k].start >= parser->json &&
+        parser->tokens[k].start < parser->json + parser->json_len);
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_arr == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_arr != \null;
+    assigns *out_arr;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_ARRAY;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonArray *out_arr)
 {
     OkjError result = OKJ_SUCCESS;
@@ -2019,6 +2123,38 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+  requires out_obj == \null || \valid(out_obj);
+
+  requires \separated(out_obj, parser, key + (0 .. key_len - 1));
+
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+  requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \base_addr(parser->tokens[k].start) == \base_addr(parser->json) &&
+        parser->tokens[k].start >= parser->json &&
+        parser->tokens[k].start < parser->json + parser->json_len);
+
+  // 2. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null || out_obj == \null;
+    assigns \nothing;
+    ensures \result == OKJ_ERROR_BAD_POINTER;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null && out_obj != \null;
+    assigns *out_obj;
+    ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_OBJECT;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
 OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_len, OkJsonObject *out_obj)
 {
     OkjError result = OKJ_SUCCESS;

@@ -1874,19 +1874,18 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len
   requires parser == \null || \valid_read(parser);
   requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
   requires out_arr == \null || \valid(out_arr);
-
-  // Guarantee the output pointer doesn't alias the inputs to prevent timeouts
   requires \separated(out_arr, parser, key + (0 .. key_len - 1));
 
-  // Inherit the token validity requirements so okj_find_value_index is satisfied
   requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
-  
-  // The JSON payload must be safely readable
   requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
 
-  // The SMT solver needs to know that every stored token mathematically 
-  // resides within the bounds of the main JSON buffer so that the helper 
-  // functions (which rely on base_addr comparisons) can be proven safe.
+  // The valid_read requirement needed by okj_find_value_index
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // The base_addr requirement needed by the container helpers
   requires parser != \null ==> 
     (\forall integer k; 0 <= k < parser->token_count ==> 
       parser->tokens[k].start != \null ==> 
@@ -1902,7 +1901,6 @@ OkjError okj_get_boolean(OkJsonParser *parser, const char *key, uint16_t key_len
 
   behavior valid_args:
     assumes parser != \null && key != \null && out_arr != \null;
-    // We are only allowed to modify the output struct
     assigns *out_arr;
     ensures \result == OKJ_SUCCESS || \result == OKJ_ERROR_BAD_ARRAY;
 
@@ -1922,6 +1920,7 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, 
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS)                  ||
+            (idx >= parser->token_count)             ||
             (parser->tokens[idx].type != OKJ_ARRAY)  ||
             (parser->tokens[idx].start == NULL))
         {

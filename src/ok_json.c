@@ -1994,6 +1994,7 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS)                  || 
+            (idx >= parser->token_count)             ||
             (parser->tokens[idx].type != OKJ_OBJECT) ||
             (parser->tokens[idx].start == NULL))
         {
@@ -2123,6 +2124,7 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS)                 ||
+            (idx >= parser->token_count)            ||
             (parser->tokens[idx].type != OKJ_ARRAY) ||
             (parser->tokens[idx].start == NULL))
         {
@@ -2190,6 +2192,7 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
         if ((idx == OKJ_MAX_TOKENS)                  ||
+            (idx >= parser->token_count)             ||
             (parser->tokens[idx].type != OKJ_OBJECT) ||
             (parser->tokens[idx].start == NULL))
         {

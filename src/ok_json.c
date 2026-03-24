@@ -751,19 +751,23 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     if (*p == '\\')
                     {
                         p++;
+                        /*@ assert length == p - start - 1; */ // Guide the solver
 
                         if (p < end)
                         {
                             length++;
                             p++;
+                            /*@ assert length == p - start - 1; */ // Guide the solver
                         }
                     }
                     else
                     {
                         p++;
+                        /*@ assert length == p - start - 1; */ // Guide the solver
                     }
 
                     length++;
+                    /*@ assert length == p - start; */ // Re-establish the loop invariant
                 }
 
                 /* Count the closing quote if present, then continue. */
@@ -1917,13 +1921,20 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, 
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
+        if ((idx == OKJ_MAX_TOKENS)                  ||
+            (parser->tokens[idx].type != OKJ_ARRAY)  ||
+            (parser->tokens[idx].start == NULL))
         {
             result = OKJ_ERROR_BAD_ARRAY;
         }
         else
         {
             const char *end = parser->json + parser->json_len;
+
+            /* Explicitly instantiate the \forall quantifier for this specific index */
+            /*@ assert \base_addr(parser->tokens[idx].start) == \base_addr(parser->json); */
+            /*@ assert parser->tokens[idx].start >= parser->json; */
+            /*@ assert parser->tokens[idx].start < end; */
 
             out_arr->start  = parser->tokens[idx].start;
             out_arr->count  = okj_count_array_elements(parser->tokens[idx].start, end);
@@ -1983,13 +1994,19 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
+        if ((idx == OKJ_MAX_TOKENS)                  || 
+            (parser->tokens[idx].type != OKJ_OBJECT) ||
+            (parser->tokens[idx].start == NULL))
         {
             result = OKJ_ERROR_BAD_OBJECT;
         }
         else
         {
             const char *end = parser->json + parser->json_len;
+
+            /*@ assert \base_addr(parser->tokens[idx].start) == \base_addr(parser->json); */
+            /*@ assert parser->tokens[idx].start >= parser->json; */
+            /*@ assert parser->tokens[idx].start < end; */
 
             out_obj->start  = parser->tokens[idx].start;
             out_obj->count  = okj_count_object_members(parser->tokens[idx].start, end);
@@ -2106,13 +2123,19 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_ARRAY))
+        if ((idx == OKJ_MAX_TOKENS)                 ||
+            (parser->tokens[idx].type != OKJ_ARRAY) ||
+            (parser->tokens[idx].start == NULL))
         {
             result = OKJ_ERROR_BAD_ARRAY;
         }
         else
         {
             const char *end = parser->json + parser->json_len;
+
+            /*@ assert \base_addr(parser->tokens[idx].start) == \base_addr(parser->json); */
+            /*@ assert parser->tokens[idx].start >= parser->json; */
+            /*@ assert parser->tokens[idx].start < end; */
 
             out_arr->start  = parser->tokens[idx].start;
             out_arr->count  = okj_count_array_elements(parser->tokens[idx].start, end);
@@ -2167,13 +2190,19 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS) || (parser->tokens[idx].type != OKJ_OBJECT))
+        if ((idx == OKJ_MAX_TOKENS)                  ||
+            (parser->tokens[idx].type != OKJ_OBJECT) ||
+            (parser->tokens[idx].start == NULL))
         {
             result = OKJ_ERROR_BAD_OBJECT;
         }
         else
         {
             const char *end = parser->json + parser->json_len;
+
+            /*@ assert \base_addr(parser->tokens[idx].start) == \base_addr(parser->json); */
+            /*@ assert parser->tokens[idx].start >= parser->json; */
+            /*@ assert parser->tokens[idx].start < end; */
 
             out_obj->start  = parser->tokens[idx].start;
             out_obj->count  = okj_count_object_members(parser->tokens[idx].start, end);

@@ -730,6 +730,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 len++;
 
                 //@ assert p == p_entry + 1;
+                //@ assert len == p - start;
 
                 /*@
                   // INNER LOOP INVARIANTS
@@ -747,6 +748,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     {
                         p++;
                         len++;
+                        //@ assert len == p - start;
 
                         if (p < end)
                         {
@@ -759,6 +761,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                         p++;
                         len++;
                     }
+                    //@ assert len == p - start;
                 }
 
                 /* Skip the closing quote if present */
@@ -768,6 +771,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     len++;
                 }
 
+                //@ assert len == p - start;
                 //@ assert p > p_entry;
             }
             else
@@ -787,6 +791,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
                 p++;
                 len++;
+                //@ assert len == p - start;
 
                 if (depth == 0U)
                 {

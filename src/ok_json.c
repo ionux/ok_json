@@ -713,6 +713,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
           // OUTER LOOP INVARIANTS
           loop invariant \base_addr(p) == \base_addr(start);
           loop invariant start <= p <= end;
+          loop invariant len == p - start;
 
           loop assigns p, depth, len;
           loop variant end - p;
@@ -735,6 +736,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                   loop invariant \base_addr(p) == \base_addr(start);
                   loop invariant start <= p <= end;
                   loop invariant p >= p_entry + 1;
+                  loop invariant len == p - start;
 
                   loop assigns p, len;
                   loop variant end - p;

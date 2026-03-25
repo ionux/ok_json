@@ -704,19 +704,16 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
     const char *p = start;
 
-    uint16_t length = 0U;
-
     if ((p != NULL) && ((*p == '[') || (*p == '{')))
     {
-        uint16_t depth  = 0U;
+        uint16_t depth = 0U;
 
         /*@
           // OUTER LOOP INVARIANTS
           loop invariant \base_addr(p) == \base_addr(start);
           loop invariant start <= p <= end;
-          loop invariant length == p - start;
-          
-          loop assigns p, depth, length;
+
+          loop assigns p, depth;
           loop variant end - p;
         */
         while (p < end)
@@ -725,17 +722,15 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
             if (c == '"')
             {
-                /* Skip opening quote - strictly paired increments */
+                /* Skip opening quote */
                 p++;
-                length++;
 
                 /*@
                   // INNER LOOP INVARIANTS
                   loop invariant \base_addr(p) == \base_addr(start);
                   loop invariant start <= p <= end;
-                  loop invariant length == p - start;
-                  
-                  loop assigns p, length;
+
+                  loop assigns p;
                   loop variant end - p;
                 */
                 while ((p < end) && (*p != '"'))
@@ -743,26 +738,22 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     if (*p == '\\')
                     {
                         p++;
-                        length++;
 
                         if (p < end)
                         {
                             p++;
-                            length++;
                         }
                     }
                     else
                     {
                         p++;
-                        length++;
                     }
                 }
 
-                /* Count the closing quote if present */
+                /* Skip the closing quote if present */
                 if ((p < end) && (*p == '"'))
                 {
                     p++;
-                    length++;
                 }
             }
             else
@@ -776,9 +767,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     depth--;
                 }
 
-                /* Strictly paired increments */
                 p++;
-                length++;
 
                 if (depth == 0U)
                 {
@@ -788,7 +777,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         }
     }
 
-    return length;
+    return (uint16_t)(p - start);
 }
 
 /*@

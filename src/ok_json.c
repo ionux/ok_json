@@ -718,6 +718,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         */
         while (p < end)
         {
+            //@ ghost const char *p_entry = p;
             char c = *p;
 
             if (c == '"')
@@ -774,6 +775,8 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     break;
                 }
             }
+
+            //@ assert p > p_entry;
         }
     }
 

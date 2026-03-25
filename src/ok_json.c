@@ -789,9 +789,9 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         }
     }
 
-    uint16_t diff = p - start;
+    long diff = p - start;
 
-    return diff;
+    return (uint16_t)diff;
 }
 
 /*@

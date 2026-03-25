@@ -713,8 +713,6 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         /*@
           // OUTER LOOP INVARIANTS
           loop invariant \base_addr(p) == \base_addr(start);
-          
-          // NEW: Use SMT-friendly raw pointer bounds!
           loop invariant start <= p <= end;
           loop invariant length == p - start;
           
@@ -725,18 +723,15 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         {
             char c = *p;
 
-            length++;
-
             if (c == '"')
             {
-                /* Skip past the opening quote (already counted above). */
+                /* Skip opening quote - strictly paired increments */
                 p++;
+                length++;
 
                 /*@
                   // INNER LOOP INVARIANTS
                   loop invariant \base_addr(p) == \base_addr(start);
-                  
-                  // NEW: Use SMT-friendly raw pointer bounds!
                   loop invariant start <= p <= end;
                   loop invariant length == p - start;
                   
@@ -763,11 +758,11 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     }
                 }
 
-                /* Count the closing quote if present, then continue. */
+                /* Count the closing quote if present */
                 if ((p < end) && (*p == '"'))
                 {
-                    length++;
                     p++;
+                    length++;
                 }
             }
             else
@@ -780,12 +775,10 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 {
                     depth--;
                 }
-                else
-                {
-                    /* whitespace, digits, colons, commas, letters, etc. */
-                }
 
+                /* Strictly paired increments */
                 p++;
+                length++;
 
                 if (depth == 0U)
                 {
@@ -1947,11 +1940,16 @@ OkjError okj_get_array(OkJsonParser *parser, const char *key, uint16_t key_len, 
   requires parser == \null || \valid_read(parser);
   requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
   requires out_obj == \null || \valid(out_obj);
-
+  
   requires \separated(out_obj, parser, key + (0 .. key_len - 1));
 
   requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
   requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
 
   requires parser != \null ==> 
     (\forall integer k; 0 <= k < parser->token_count ==> 
@@ -1986,8 +1984,8 @@ OkjError okj_get_object(OkJsonParser *parser, const char *key, uint16_t key_len,
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS)                  || 
-            (idx >= parser->token_count)             ||
+        if ((idx == OKJ_MAX_TOKENS) || 
+            (idx >= parser->token_count) ||
             (parser->tokens[idx].type != OKJ_OBJECT) ||
             (parser->tokens[idx].start == NULL))
         {
@@ -2077,11 +2075,16 @@ OkjError okj_get_token(OkJsonParser *parser, const char *key, uint16_t key_len, 
   requires parser == \null || \valid_read(parser);
   requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
   requires out_arr == \null || \valid(out_arr);
-
+  
   requires \separated(out_arr, parser, key + (0 .. key_len - 1));
 
   requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
   requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
 
   requires parser != \null ==> 
     (\forall integer k; 0 <= k < parser->token_count ==> 
@@ -2116,8 +2119,8 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS)                 ||
-            (idx >= parser->token_count)            ||
+        if ((idx == OKJ_MAX_TOKENS) || 
+            (idx >= parser->token_count) ||
             (parser->tokens[idx].type != OKJ_ARRAY) ||
             (parser->tokens[idx].start == NULL))
         {
@@ -2145,11 +2148,16 @@ OkjError okj_get_array_raw(OkJsonParser *parser, const char *key, uint16_t key_l
   requires parser == \null || \valid_read(parser);
   requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
   requires out_obj == \null || \valid(out_obj);
-
+  
   requires \separated(out_obj, parser, key + (0 .. key_len - 1));
 
   requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
   requires parser != \null ==> \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
 
   requires parser != \null ==> 
     (\forall integer k; 0 <= k < parser->token_count ==> 
@@ -2184,8 +2192,8 @@ OkjError okj_get_object_raw(OkJsonParser *parser, const char *key, uint16_t key_
     {
         uint16_t idx = okj_find_value_index(parser, key, key_len);
 
-        if ((idx == OKJ_MAX_TOKENS)                  ||
-            (idx >= parser->token_count)             ||
+        if ((idx == OKJ_MAX_TOKENS) || 
+            (idx >= parser->token_count) ||
             (parser->tokens[idx].type != OKJ_OBJECT) ||
             (parser->tokens[idx].start == NULL))
         {

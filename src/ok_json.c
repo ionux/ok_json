@@ -772,6 +772,10 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 {
                     depth--;
                 }
+                else
+                {
+                    /* Final else clause required for MISRA compliance. */
+                }
 
                 p++;
 

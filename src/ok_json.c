@@ -756,6 +756,8 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 {
                     p++;
                 }
+
+                //@ assert p > p_entry;
             }
             else
             {

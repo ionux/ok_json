@@ -726,10 +726,13 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 /* Skip opening quote */
                 p++;
 
+                //@ assert p == p_entry + 1;
+
                 /*@
                   // INNER LOOP INVARIANTS
                   loop invariant \base_addr(p) == \base_addr(start);
                   loop invariant start <= p <= end;
+                  loop invariant p >= p_entry + 1;
 
                   loop assigns p;
                   loop variant end - p;
@@ -756,6 +759,8 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 {
                     p++;
                 }
+
+                //@ assert p > p_entry;
             }
             else
             {

@@ -703,6 +703,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
      * Returns 0 if `start` is NULL or does not begin with '[' or '{'. */
 
     const char *p = start;
+    uint16_t len = 0U;
 
     if ((p != NULL) && ((*p == '[') || (*p == '{')))
     {
@@ -713,7 +714,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
           loop invariant \base_addr(p) == \base_addr(start);
           loop invariant start <= p <= end;
 
-          loop assigns p, depth;
+          loop assigns p, depth, len;
           loop variant end - p;
         */
         while (p < end)
@@ -725,6 +726,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
             {
                 /* Skip opening quote */
                 p++;
+                len++;
 
                 //@ assert p == p_entry + 1;
 
@@ -734,7 +736,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                   loop invariant start <= p <= end;
                   loop invariant p >= p_entry + 1;
 
-                  loop assigns p;
+                  loop assigns p, len;
                   loop variant end - p;
                 */
                 while ((p < end) && (*p != '"'))
@@ -742,15 +744,18 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     if (*p == '\\')
                     {
                         p++;
+                        len++;
 
                         if (p < end)
                         {
                             p++;
+                            len++;
                         }
                     }
                     else
                     {
                         p++;
+                        len++;
                     }
                 }
 
@@ -758,6 +763,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 if ((p < end) && (*p == '"'))
                 {
                     p++;
+                    len++;
                 }
 
                 //@ assert p > p_entry;
@@ -778,6 +784,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                 }
 
                 p++;
+                len++;
 
                 if (depth == 0U)
                 {
@@ -789,7 +796,7 @@ static uint16_t okj_measure_container(const char *start, const char *end)
         }
     }
 
-    return (uint16_t)(p - start);
+    return len;
 }
 
 /*@

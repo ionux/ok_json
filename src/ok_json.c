@@ -712,13 +712,10 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
         /*@
           // OUTER LOOP INVARIANTS
-          // 1. Memory block anchor is preserved
           loop invariant \base_addr(p) == \base_addr(start);
           
-          // 2. SMT-friendly integer offset bounds
-          loop invariant 0 <= p - start <= end - start;
-          
-          // 3. Strict equality: 'length' increments with 'p'.
+          // NEW: Use SMT-friendly raw pointer bounds!
+          loop invariant start <= p <= end;
           loop invariant length == p - start;
           
           loop assigns p, depth, length;
@@ -737,10 +734,10 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
                 /*@
                   // INNER LOOP INVARIANTS
-                  // Re-assert the memory bounds and lockstep equality 
-                  // for the inner string-skipping loop.
                   loop invariant \base_addr(p) == \base_addr(start);
-                  loop invariant 0 <= p - start <= end - start;
+                  
+                  // NEW: Use SMT-friendly raw pointer bounds!
+                  loop invariant start <= p <= end;
                   loop invariant length == p - start;
                   
                   loop assigns p, length;
@@ -751,23 +748,19 @@ static uint16_t okj_measure_container(const char *start, const char *end)
                     if (*p == '\\')
                     {
                         p++;
-                        /*@ assert length == p - start - 1; */ // Guide the solver
+                        length++;
 
                         if (p < end)
                         {
-                            length++;
                             p++;
-                            /*@ assert length == p - start - 1; */ // Guide the solver
+                            length++;
                         }
                     }
                     else
                     {
                         p++;
-                        /*@ assert length == p - start - 1; */ // Guide the solver
+                        length++;
                     }
-
-                    length++;
-                    /*@ assert length == p - start; */ // Re-establish the loop invariant
                 }
 
                 /* Count the closing quote if present, then continue. */

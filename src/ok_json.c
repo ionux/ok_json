@@ -796,84 +796,6 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
 /*@
   // 1. Preconditions
-  // The parser can be NULL, or it must be a valid pointer to the struct.
-  requires parser == \null || \valid(parser);
-
-  // 2. Behaviors
-  behavior null_ptrs:
-    assumes parser == \null || json_string == \null;
-    assigns \nothing;
-
-  behavior valid_ptrs:
-    assumes parser != \null && json_string != \null;
-    
-    // We are modifying the entire parser struct
-    assigns *parser;
-    
-    // Verify standard field initializations
-    ensures parser->json == json_string;
-    ensures parser->json_len == json_len;
-    ensures parser->position == 0;
-    ensures parser->token_count == 0;
-    ensures parser->depth == 0;
-    ensures parser->context == OKJ_CTX_WANT_VALUE;
-    
-    // Verify array initializations using universal quantification
-    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].type == OKJ_UNDEFINED;
-    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].start == \null;
-    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].length == 0;
-    ensures \forall integer k; 0 <= k < OKJ_MAX_DEPTH ==> parser->depth_stack[k] == OKJ_UNDEFINED;
-
-  complete behaviors;
-  disjoint behaviors;
-*/
-void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
-{
-    if ((parser != NULL) && (json_string != NULL))
-    {
-        uint16_t i;
-
-        /*@
-          loop invariant 0 <= i <= OKJ_MAX_TOKENS;
-          
-          // Prove that all elements BEFORE the current index 'i' are correctly initialized
-          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].type == OKJ_UNDEFINED;
-          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].start == \null;
-          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].length == 0;
-          
-          // Explicitly state which part of the array this loop is allowed to modify
-          loop assigns i, parser->tokens[0 .. OKJ_MAX_TOKENS - 1];
-          loop variant OKJ_MAX_TOKENS - i;
-        */
-        for (i = 0U; i < OKJ_MAX_TOKENS; i++)
-        {
-            parser->tokens[i].type   = OKJ_UNDEFINED;
-            parser->tokens[i].start  = NULL;
-            parser->tokens[i].length = 0U;
-        }
-
-        /*@
-          loop invariant 0 <= i <= OKJ_MAX_DEPTH;
-          loop invariant \forall integer k; 0 <= k < i ==> parser->depth_stack[k] == OKJ_UNDEFINED;
-          loop assigns i, parser->depth_stack[0 .. OKJ_MAX_DEPTH - 1];
-          loop variant OKJ_MAX_DEPTH - i;
-        */
-        for (i = 0U; i < (uint16_t)OKJ_MAX_DEPTH; i++)
-        {
-            parser->depth_stack[i] = OKJ_UNDEFINED;
-        }
-
-        parser->json        = json_string;
-        parser->json_len    = json_len;
-        parser->position    = 0U;
-        parser->token_count = 0U;
-        parser->depth       = 0U;
-        parser->context     = OKJ_CTX_WANT_VALUE;
-    }
-}
-
-/*@
-  // 1. Preconditions
   // The parser pointer can be NULL, or it must point to a valid struct.
   requires parser == \null || \valid(parser);
   
@@ -1532,6 +1454,161 @@ static OkjError okj_parse_value(OkJsonParser *parser)
     return result;
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid_read(parser);
+  
+  // The search key must be safely readable up to key_len.
+  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
+
+  // The caller must guarantee that the parser state is well-formed.
+  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
+
+  // The caller must guarantee that EVERY token in the parser array that 
+  // has a non-null start pointer is safely readable up to its specified length.
+  // This is the mathematical key that allows okj_match to be proven safe.
+  requires parser != \null ==> 
+    (\forall integer k; 0 <= k < parser->token_count ==> 
+      parser->tokens[k].start != \null ==> 
+        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
+
+  // 2. Frame Condition
+  // This is a pure search function; it modifies absolutely nothing.
+  assigns \nothing;
+
+  // 3. Behaviors
+  behavior invalid_args:
+    assumes parser == \null || key == \null;
+    ensures \result == OKJ_MAX_TOKENS;
+
+  behavior valid_args:
+    assumes parser != \null && key != \null;
+    // The result is either OKJ_MAX_TOKENS (not found) or a valid index (1 to token_count)
+    ensures \result == OKJ_MAX_TOKENS || (1 <= \result && \result <= parser->token_count);
+
+  complete behaviors;
+  disjoint behaviors;
+*/
+static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint16_t key_len)
+{
+    /* Scans the token array for a STRING token whose content equals `key`
+    * (of length `key_len` bytes).  The key need not be null-terminated.
+    * Returns the index of the NEXT token (the value), or OKJ_MAX_TOKENS if
+    * not found.  Keys longer than OKJ_MAX_STRING_LEN are never found because
+    * the parser enforces that limit on stored tokens. */
+
+    uint16_t result = OKJ_MAX_TOKENS;
+
+    if ((parser != NULL) && (key != NULL))
+    {
+        uint16_t i;
+
+        /*@
+          // LOOP INVARIANTS
+          // i will never exceed the token count
+          loop invariant 0 <= i <= parser->token_count;
+          
+          // Result stays at OKJ_MAX_TOKENS unless a match is found
+          loop invariant result == OKJ_MAX_TOKENS || (1 <= result && result <= parser->token_count);
+          
+          loop assigns i, result;
+          loop variant parser->token_count - i;
+        */
+        for (i = 0U; (i + 1U) < parser->token_count; i++)
+        {
+            const OkJsonToken *t = &parser->tokens[i];
+
+            if ((t->type   == OKJ_STRING) &&
+                (t->length == key_len)    &&
+                (okj_match(t->start, key, key_len)))
+            {
+                result = i + 1U;
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
+/*@
+  // 1. Preconditions
+  // The parser can be NULL, or it must be a valid pointer to the struct.
+  requires parser == \null || \valid(parser);
+
+  // 2. Behaviors
+  behavior null_ptrs:
+    assumes parser == \null || json_string == \null;
+    assigns \nothing;
+
+  behavior valid_ptrs:
+    assumes parser != \null && json_string != \null;
+    
+    // We are modifying the entire parser struct
+    assigns *parser;
+    
+    // Verify standard field initializations
+    ensures parser->json == json_string;
+    ensures parser->json_len == json_len;
+    ensures parser->position == 0;
+    ensures parser->token_count == 0;
+    ensures parser->depth == 0;
+    ensures parser->context == OKJ_CTX_WANT_VALUE;
+    
+    // Verify array initializations using universal quantification
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].type == OKJ_UNDEFINED;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].start == \null;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_TOKENS ==> parser->tokens[k].length == 0;
+    ensures \forall integer k; 0 <= k < OKJ_MAX_DEPTH ==> parser->depth_stack[k] == OKJ_UNDEFINED;
+
+  complete behaviors;
+  disjoint behaviors;
+*/
+void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
+{
+    if ((parser != NULL) && (json_string != NULL))
+    {
+        uint16_t i;
+
+        /*@
+          loop invariant 0 <= i <= OKJ_MAX_TOKENS;
+          
+          // Prove that all elements BEFORE the current index 'i' are correctly initialized
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].type == OKJ_UNDEFINED;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].start == \null;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->tokens[k].length == 0;
+          
+          // Explicitly state which part of the array this loop is allowed to modify
+          loop assigns i, parser->tokens[0 .. OKJ_MAX_TOKENS - 1];
+          loop variant OKJ_MAX_TOKENS - i;
+        */
+        for (i = 0U; i < OKJ_MAX_TOKENS; i++)
+        {
+            parser->tokens[i].type   = OKJ_UNDEFINED;
+            parser->tokens[i].start  = NULL;
+            parser->tokens[i].length = 0U;
+        }
+
+        /*@
+          loop invariant 0 <= i <= OKJ_MAX_DEPTH;
+          loop invariant \forall integer k; 0 <= k < i ==> parser->depth_stack[k] == OKJ_UNDEFINED;
+          loop assigns i, parser->depth_stack[0 .. OKJ_MAX_DEPTH - 1];
+          loop variant OKJ_MAX_DEPTH - i;
+        */
+        for (i = 0U; i < (uint16_t)OKJ_MAX_DEPTH; i++)
+        {
+            parser->depth_stack[i] = OKJ_UNDEFINED;
+        }
+
+        parser->json        = json_string;
+        parser->json_len    = json_len;
+        parser->position    = 0U;
+        parser->token_count = 0U;
+        parser->depth       = 0U;
+        parser->context     = OKJ_CTX_WANT_VALUE;
+    }
+}
+
 OkjError okj_parse(OkJsonParser *parser)
 {
     OkjError result = OKJ_SUCCESS;
@@ -1606,83 +1683,6 @@ OkjError okj_parse(OkJsonParser *parser)
             if ((result == OKJ_SUCCESS) && (parser->token_count == 0U))
             {
                 result = OKJ_ERROR_UNEXPECTED_END;
-            }
-        }
-    }
-
-    return result;
-}
-
-/*@
-  // 1. Preconditions
-  requires parser == \null || \valid_read(parser);
-  
-  // The search key must be safely readable up to key_len.
-  requires key != \null ==> \valid_read(key + (0 .. key_len - 1));
-
-  // The caller must guarantee that the parser state is well-formed.
-  requires parser != \null ==> parser->token_count <= OKJ_MAX_TOKENS;
-
-  // The caller must guarantee that EVERY token in the parser array that 
-  // has a non-null start pointer is safely readable up to its specified length.
-  // This is the mathematical key that allows okj_match to be proven safe.
-  requires parser != \null ==> 
-    (\forall integer k; 0 <= k < parser->token_count ==> 
-      parser->tokens[k].start != \null ==> 
-        \valid_read(parser->tokens[k].start + (0 .. parser->tokens[k].length - 1)));
-
-  // 2. Frame Condition
-  // This is a pure search function; it modifies absolutely nothing.
-  assigns \nothing;
-
-  // 3. Behaviors
-  behavior invalid_args:
-    assumes parser == \null || key == \null;
-    ensures \result == OKJ_MAX_TOKENS;
-
-  behavior valid_args:
-    assumes parser != \null && key != \null;
-    // The result is either OKJ_MAX_TOKENS (not found) or a valid index (1 to token_count)
-    ensures \result == OKJ_MAX_TOKENS || (1 <= \result && \result <= parser->token_count);
-
-  complete behaviors;
-  disjoint behaviors;
-*/
-static uint16_t okj_find_value_index(OkJsonParser *parser, const char *key, uint16_t key_len)
-{
-    /* Scans the token array for a STRING token whose content equals `key`
-    * (of length `key_len` bytes).  The key need not be null-terminated.
-    * Returns the index of the NEXT token (the value), or OKJ_MAX_TOKENS if
-    * not found.  Keys longer than OKJ_MAX_STRING_LEN are never found because
-    * the parser enforces that limit on stored tokens. */
-
-    uint16_t result = OKJ_MAX_TOKENS;
-
-    if ((parser != NULL) && (key != NULL))
-    {
-        uint16_t i;
-
-        /*@
-          // LOOP INVARIANTS
-          // i will never exceed the token count
-          loop invariant 0 <= i <= parser->token_count;
-          
-          // Result stays at OKJ_MAX_TOKENS unless a match is found
-          loop invariant result == OKJ_MAX_TOKENS || (1 <= result && result <= parser->token_count);
-          
-          loop assigns i, result;
-          loop variant parser->token_count - i;
-        */
-        for (i = 0U; (i + 1U) < parser->token_count; i++)
-        {
-            const OkJsonToken *t = &parser->tokens[i];
-
-            if ((t->type   == OKJ_STRING) &&
-                (t->length == key_len)    &&
-                (okj_match(t->start, key, key_len)))
-            {
-                result = i + 1U;
-                break;
             }
         }
     }

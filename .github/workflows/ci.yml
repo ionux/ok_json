@@ -93,14 +93,21 @@ jobs:
         run: |
           # Give the 'opam' user ownership of the checked-out workspace
           chown -R opam:opam .
-          
+
           echo "## ACSL Contract Verification Results" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
-          
-          # Temporarily disable 'exit on error' so we can capture the output 
+
+          # Temporarily disable 'exit on error' so we can capture the output
           # safely even if the WP prover fails to prove a goal.
           set +e
-          
+
+          # Issue #69 note: okj_parse_value and okj_parse are NOT yet in this
+          # list.  They carry ACSL preconditions (see src/ok_json.c) but
+          # discharging their inner-loop WP goals requires additional loop
+          # invariants that are tracked as follow-up work.  The runtime OOB
+          # checks added for Issue #69 plus the heap-tight-buffer libFuzzer
+          # harness + ASan regression tests guard against the specific bugs
+          # in the interim.
           # Run Frama-C as the opam user and capture stdout/stderr into a variable
           OUTPUT=$(su opam -c 'opam exec -- frama-c \
             -cpp-extra-args="-I./include -std=c99" \

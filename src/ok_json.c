@@ -844,6 +844,39 @@ static void okj_skip_whitespace(OkJsonParser *parser)
     }
 }
 
+/*@
+  // 1. Preconditions
+  //
+  // parser may be NULL — we handle that gracefully by returning
+  // OKJ_ERROR_BAD_POINTER.  If non-NULL, the struct must be valid for r/w.
+  requires parser == \null || \valid(parser);
+
+  // If parser is non-NULL, the json buffer it references must be readable
+  // for at least json_len bytes.  Without this, every indexed read inside
+  // this function's inner loops (strings, numbers, escapes, keywords) is
+  // undefined behavior — that is exactly the class of bug Issue #69 reported.
+  requires parser != \null ==>
+             \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  // position must be within or at the end of the buffer at entry.  Callers
+  // (okj_parse, recursive entry for containers) maintain this invariant.
+  requires parser != \null ==> parser->position <= parser->json_len;
+
+  // Token array must be addressable.
+  requires parser != \null ==>
+             \valid(parser->tokens + (0 .. OKJ_MAX_TOKENS - 1));
+
+  // 2. Frame condition
+  assigns parser == \null ? \nothing : *parser;
+
+  // 3. Postconditions
+  ensures parser != \null ==> parser->position <= parser->json_len;
+
+  // NOTE: Full WP verification of this function requires extensive loop
+  // invariants on the string/number/escape inner loops.  This is tracked
+  // as follow-up work (see TODO_LIST).  Adding this function to -wp-fct
+  // without those invariants will produce unverified goals.
+ */
 /*
  * TODO: Refactor to reduce complexity. -RLM
  */
@@ -1119,17 +1152,35 @@ static OkjError okj_parse_value(OkJsonParser *parser)
 
                                     uint16_t h;
 
+                                    /* RFC 8259 §7: \u escape MUST be followed by exactly 4
+                                     * hex digits.  Each digit read requires a bounds check —
+                                     * the outer while loop only guards entry into the string
+                                     * body, not individual reads inside this inner for loop.
+                                     * Without the check, truncated input such as
+                                     * {"a":"\uAB (10 bytes, no NUL terminator) causes a
+                                     * heap-buffer-overread past parser->json[parser->json_len-1].
+                                     *
+                                     * We also gate every iteration on loop_break so that once
+                                     * an error is detected, parser->position does not continue
+                                     * to advance past the error point. */
                                     for (h = 0U; h < 4U; h++)
                                     {
-                                        if ((okj_is_hex_digit(parser->json[parser->position]) == 0U) &&
-                                            (loop_break != 1U))
+                                        if (loop_break == 0U)
                                         {
-                                            result = OKJ_ERROR_BAD_STRING;
-                                            loop_break = 1U;
-                                        }
-                                        else
-                                        {
-                                            parser->position++;
+                                            if (parser->position >= parser->json_len)
+                                            {
+                                                result = OKJ_ERROR_BAD_STRING;
+                                                loop_break = 1U;
+                                            }
+                                            else if (okj_is_hex_digit(parser->json[parser->position]) == 0U)
+                                            {
+                                                result = OKJ_ERROR_BAD_STRING;
+                                                loop_break = 1U;
+                                            }
+                                            else
+                                            {
+                                                parser->position++;
+                                            }
                                         }
                                     }
                                 }
@@ -1158,7 +1209,43 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                             }
                             else
                             {
-                                if (okj_validate_utf8_sequence(parser->json,
+                                /* okj_validate_utf8_sequence's ACSL contract requires
+                                 * \valid_read(src + (pos .. pos + 3)) — 4 readable bytes.
+                                 * The outer while loop only guarantees 1 byte
+                                 * (parser->position < parser->json_len), so we must
+                                 * verify the remaining bytes match what the lead byte
+                                 * demands before calling.  Otherwise, truncated input
+                                 * like {"a":"\xC2 (7 bytes, no NUL) causes a heap-
+                                 * buffer-overread at src[pos+1]. */
+                                uint8_t  lead_byte   = (uint8_t)parser->json[parser->position];
+                                uint16_t bytes_need  = 1U;
+                                uint16_t bytes_avail = (uint16_t)(parser->json_len - parser->position);
+
+                                if (lead_byte >= 0xF0U)
+                                {
+                                    bytes_need = 4U;
+                                }
+                                else if (lead_byte >= 0xE0U)
+                                {
+                                    bytes_need = 3U;
+                                }
+                                else if (lead_byte >= 0xC2U)
+                                {
+                                    bytes_need = 2U;
+                                }
+                                else
+                                {
+                                    /* 1-byte ASCII or an invalid lead byte — the
+                                     * validator will handle these without OOB. */
+                                    bytes_need = 1U;
+                                }
+
+                                if (bytes_avail < bytes_need)
+                                {
+                                    result = OKJ_ERROR_BAD_STRING;
+                                    loop_break = 1U;
+                                }
+                                else if (okj_validate_utf8_sequence(parser->json,
                                                             parser->position,
                                                             &utf8_advance) == 0U)
                                 {
@@ -1344,7 +1431,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 }
             }
         }
-        else if (okj_match(&parser->json[parser->position], "true", 4U) == 1U)
+        else if (((uint16_t)(parser->json_len - parser->position) >= 4U) &&
+                 (okj_match(&parser->json[parser->position], "true", 4U) == 1U))
         {
             /* Keyword literals are only valid in value positions. */
             if ((parser->context != OKJ_CTX_WANT_VALUE) &&
@@ -1379,7 +1467,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 }
             }
         }
-        else if (okj_match(&parser->json[parser->position], "false", 5U) == 1U)
+        else if (((uint16_t)(parser->json_len - parser->position) >= 5U) &&
+                 (okj_match(&parser->json[parser->position], "false", 5U) == 1U))
         {
             if ((parser->context != OKJ_CTX_WANT_VALUE) &&
                 (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
@@ -1411,7 +1500,8 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                 }
             }
         }
-        else if (okj_match(&parser->json[parser->position], "null", 4U) == 1U)
+        else if (((uint16_t)(parser->json_len - parser->position) >= 4U) &&
+                 (okj_match(&parser->json[parser->position], "null", 4U) == 1U))
         {
             if ((parser->context != OKJ_CTX_WANT_VALUE) &&
                 (parser->context != OKJ_CTX_WANT_VALUE_OR_CLOSE))
@@ -1609,6 +1699,29 @@ void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
     }
 }
 
+/*@
+  // 1. Preconditions
+  requires parser == \null || \valid(parser);
+
+  // Same buffer-readability precondition as okj_parse_value: without it,
+  // the subordinate reads inside the main dispatch are UB.  This is the
+  // contract the public API documents to callers via okj_init's length
+  // parameter.
+  requires parser != \null ==>
+             \valid_read(parser->json + (0 .. parser->json_len - 1));
+
+  requires parser != \null ==>
+             \valid(parser->tokens + (0 .. OKJ_MAX_TOKENS - 1));
+
+  // 2. Frame condition
+  assigns parser == \null ? \nothing : *parser;
+
+  // NOTE: This function is not yet in the -wp-fct list because fully
+  // discharging its WP goals requires loop invariants matching those in
+  // okj_parse_value.  Issue #69's OOB reads are prevented at the source
+  // level (inside okj_parse_value) and guarded by ASan-instrumented
+  // regression tests + the updated libFuzzer harness.
+ */
 OkjError okj_parse(OkJsonParser *parser)
 {
     OkjError result = OKJ_SUCCESS;

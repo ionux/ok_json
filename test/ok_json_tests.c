@@ -33,6 +33,8 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 void test_parse_simple_object(void);
 void test_parse_array(void);
@@ -228,6 +230,13 @@ void test_close_brace_depth_zero(void);
 void test_close_bracket_depth_zero(void);
 void test_comma_outside_container(void);
 void test_false_as_object_key(void);
+/* Issue #69: heap-buffer-overread regression tests.  These use malloc'd
+ * exact-size buffers (not stack-allocated char[] which gains an implicit
+ * NUL terminator and slack bytes) so that under -fsanitize=address a
+ * regression of any of the three OOB reads would be caught. */
+void test_oob_unicode_escape_truncated_no_padding(void);
+void test_oob_utf8_lead_at_eof_no_padding(void);
+void test_oob_keyword_truncated_no_padding(void);
 
 /**
  * These tests are a work in progress. If you have ideas
@@ -5029,6 +5038,112 @@ void test_false_as_object_key(void)
     printf("test_false_as_object_key passed!\n");
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * Issue #69 regression tests: heap-buffer-overread on truncated input.
+ *
+ * These tests use malloc() to allocate a buffer of EXACTLY the input size,
+ * rather than `char json_str[] = "..."` which produces a stack-allocated
+ * array with an implicit NUL terminator and additional slack bytes.  A tight
+ * heap allocation puts AddressSanitizer's red zone immediately after the
+ * last valid byte, so if any of the three OOB reads reappear, running the
+ * test binary under -fsanitize=address will crash the process.
+ *
+ * All three tests must:
+ *  1. Not crash (neither plain nor under ASan).
+ *  2. Return a parse error (NOT OKJ_SUCCESS) since the input is truncated.
+ * ---------------------------------------------------------------------------
+ */
+
+void test_oob_unicode_escape_truncated_no_padding(void)
+{
+    /* Finding 1: {"a":"\uAB — 10 bytes, no NUL, no padding.
+     * The \uXXXX hex loop previously read 2 bytes past the allocation
+     * because it had no parser->position < parser->json_len guard. */
+    const char src[] = "{\"a\":\"\\uAB";
+    size_t     len   = sizeof(src) - 1U;   /* 10, excludes implicit NUL */
+
+    char *buf = (char *)malloc(len);
+    assert(buf != NULL);
+    memcpy(buf, src, len);
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    okj_init(&parser, buf, (uint16_t)len);
+    result = okj_parse(&parser);
+
+    /* The parser must report the truncated escape as an error, not success. */
+    assert(result != OKJ_SUCCESS);
+
+    free(buf);
+
+    printf("test_oob_unicode_escape_truncated_no_padding passed!\n");
+}
+
+void test_oob_utf8_lead_at_eof_no_padding(void)
+{
+    /* Finding 2: {"a":"\xC2 — 7 bytes, no NUL, no padding.
+     * 0xC2 is a valid 2-byte UTF-8 lead byte.  Before the fix,
+     * okj_validate_utf8_sequence read src[pos+1] unconditionally,
+     * reaching one byte past the allocation. */
+    size_t len = 7U;
+    char  *buf = (char *)malloc(len);
+    assert(buf != NULL);
+
+    buf[0] = '{';
+    buf[1] = '"';
+    buf[2] = 'a';
+    buf[3] = '"';
+    buf[4] = ':';
+    buf[5] = '"';
+    buf[6] = (char)0xC2;   /* 2-byte UTF-8 lead, no continuation byte available */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    okj_init(&parser, buf, (uint16_t)len);
+    result = okj_parse(&parser);
+
+    assert(result != OKJ_SUCCESS);
+
+    free(buf);
+
+    printf("test_oob_utf8_lead_at_eof_no_padding passed!\n");
+}
+
+void test_oob_keyword_truncated_no_padding(void)
+{
+    /* Finding 3: "tr" — 2 bytes, no NUL, no padding.
+     * The parser saw 't' and previously called okj_match(pos, "true", 4)
+     * without verifying 4 bytes remain, reading 2 bytes past the allocation.
+     * We also exercise truncated "fa" ("false") and "nu" ("null"). */
+
+    const char *cases[]   = { "tr", "fa", "nu" };
+    size_t      lens[]    = { 2U,   2U,   2U   };
+    size_t      i;
+
+    for (i = 0U; i < (sizeof(cases) / sizeof(cases[0])); i++)
+    {
+        char *buf = (char *)malloc(lens[i]);
+        assert(buf != NULL);
+        memcpy(buf, cases[i], lens[i]);
+
+        OkJsonParser parser;
+        OkjError     result;
+
+        okj_init(&parser, buf, (uint16_t)lens[i]);
+        result = okj_parse(&parser);
+
+        /* A truncated keyword literal is not a valid JSON value. */
+        assert(result != OKJ_SUCCESS);
+
+        free(buf);
+    }
+
+    printf("test_oob_keyword_truncated_no_padding passed!\n");
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -5251,6 +5366,12 @@ int main(int argc, char* argv[])
     test_close_bracket_depth_zero();
     test_comma_outside_container();
     test_false_as_object_key();
+
+    /* Issue #69: heap-buffer-overread regression tests for truncated input.
+     * These use exact-size malloc'd buffers so ASan catches any regression. */
+    test_oob_unicode_escape_truncated_no_padding();
+    test_oob_utf8_lead_at_eof_no_padding();
+    test_oob_keyword_truncated_no_padding();
 
     printf("All OK_JSON tests passed!\n");
 

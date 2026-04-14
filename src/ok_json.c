@@ -731,6 +731,8 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
     const char *p = start;
 
+    long diff = 0U;
+
     if ((p != NULL) && ((*p == '[') || (*p == '{')))
     {
         uint16_t depth = 0U;
@@ -814,9 +816,9 @@ static uint16_t okj_measure_container(const char *start, const char *end)
 
             //@ assert p > p_entry;
         }
-    }
 
-    long diff = p - start;
+        diff = p - start;
+    }
 
     return (uint16_t)diff;
 }

@@ -74,9 +74,9 @@ jobs:
                 -Iinclude test/fuzz_target.c -o fuzzer
 
       - name: Run Fuzzer
-        # Run for 60 seconds max. Fails the build if a crash/leak is found.
+        # Run for 30 seconds max. Fails the build if a crash/leak is found.
         # Restrict max_len to your parser's limit to optimize fuzzer time.
-        run: ./fuzzer -max_total_time=10 -max_len=4096  
+        run: ./fuzzer -max_total_time=30 -max_len=4096  
 
   formal-verification:
     name: Mathematical Proofs (Frama-C WP)

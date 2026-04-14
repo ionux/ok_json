@@ -237,6 +237,8 @@ void test_false_as_object_key(void);
 void test_oob_unicode_escape_truncated_no_padding(void);
 void test_oob_utf8_lead_at_eof_no_padding(void);
 void test_oob_utf8_invalid_lead_byte_at_eof(void);
+void test_oob_utf8_three_byte_lead_at_eof(void);
+void test_oob_utf8_exhaustive_lead_sweep(void);
 void test_oob_keyword_truncated_no_padding(void);
 
 /**
@@ -4358,10 +4360,10 @@ void test_validate_utf8_null_src_and_advance(void)
     uint16_t adv = 0U;
 
     /* NULL src: must return 0 immediately without dereferencing src. */
-    assert(okj_validate_utf8_sequence(NULL, 0U, &adv) == 0U);
+    assert(okj_validate_utf8_sequence(NULL, 0U, 4U, &adv) == 0U);
 
     /* NULL advance: must return 0 immediately without dereferencing advance. */
-    assert(okj_validate_utf8_sequence("test", 0U, NULL) == 0U);
+    assert(okj_validate_utf8_sequence("test", 0U, 4U, NULL) == 0U);
 
     printf("test_validate_utf8_null_src_and_advance passed!\n");
 }
@@ -5145,6 +5147,88 @@ void test_oob_utf8_invalid_lead_byte_at_eof(void)
     printf("test_oob_utf8_invalid_lead_byte_at_eof passed!\n");
 }
 
+void test_oob_utf8_three_byte_lead_at_eof(void)
+{
+    /* Second libFuzzer-discovered crasher: " \xB5\xFF (4 bytes).
+     * After consuming '"' and ' ', parser->position=2, json_len=4, so only
+     * 2 bytes remain.  0xB5 is NOT a valid 2-byte lead (0xC2-0xDF) so the
+     * validator falls through to the b2 = src[pos+2] read at line 215 —
+     * which was OOB since only 2 bytes were available.
+     *
+     * Fix: the validator now takes `len` and gates every continuation-byte
+     * read with an explicit bounds check.  This test also pins down the
+     * class of bugs where a lead byte in 0x80..0xC1 or 0xF0..0xFF lands
+     * near EOF — those classes require b2 or b3 reads that the old
+     * caller-side "bytes_need" heuristic could not cover without a
+     * signature change. */
+    size_t len = 4U;
+    char  *buf = (char *)malloc(len);
+    assert(buf != NULL);
+
+    buf[0] = 0x22;         /* " */
+    buf[1] = 0x20;         /* space */
+    buf[2] = (char)0xB5;   /* lead byte requiring b2 read */
+    buf[3] = (char)0xFF;
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    okj_init(&parser, buf, (uint16_t)len);
+    result = okj_parse(&parser);
+
+    assert(result != OKJ_SUCCESS);
+
+    free(buf);
+
+    printf("test_oob_utf8_three_byte_lead_at_eof passed!\n");
+}
+
+void test_oob_utf8_exhaustive_lead_sweep(void)
+{
+    /* Exhaustive truncation sweep: for every possible non-ASCII lead byte
+     * (0x80..0xFF) and every tail length 1..4, place the lead inside a
+     * JSON string context at end-of-buffer and verify okj_parse neither
+     * crashes nor returns OKJ_SUCCESS (the input is truncated/invalid).
+     *
+     * This pins down the remediation of the entire class of bugs — if any
+     * internal path in okj_validate_utf8_sequence ever regresses to an
+     * unguarded read, running this test under -fsanitize=address will
+     * catch it immediately. */
+    int lead;
+    int tail;
+
+    for (lead = 0x80; lead <= 0xFF; lead++)
+    {
+        for (tail = 1; tail <= 4; tail++)
+        {
+            size_t len = (size_t)(2 + tail);  /* '"' + lead + (tail-1) fills */
+            char  *buf = (char *)malloc(len);
+            size_t i;
+
+            assert(buf != NULL);
+
+            buf[0] = '"';
+            buf[1] = (char)(uint8_t)lead;
+
+            /* Fill remaining bytes with 0x80 so they look like continuation
+             * bytes (maximizes paths through the validator). */
+            for (i = 2U; i < len; i++)
+            {
+                buf[i] = (char)0x80;
+            }
+
+            OkJsonParser parser;
+
+            okj_init(&parser, buf, (uint16_t)len);
+            (void)okj_parse(&parser);  /* Must not OOB regardless of outcome */
+
+            free(buf);
+        }
+    }
+
+    printf("test_oob_utf8_exhaustive_lead_sweep passed!\n");
+}
+
 void test_oob_keyword_truncated_no_padding(void)
 {
     /* Finding 3: "tr" — 2 bytes, no NUL, no padding.
@@ -5405,6 +5489,8 @@ int main(int argc, char* argv[])
     test_oob_unicode_escape_truncated_no_padding();
     test_oob_utf8_lead_at_eof_no_padding();
     test_oob_utf8_invalid_lead_byte_at_eof();
+    test_oob_utf8_three_byte_lead_at_eof();
+    test_oob_utf8_exhaustive_lead_sweep();
     test_oob_keyword_truncated_no_padding();
 
     printf("All OK_JSON tests passed!\n");

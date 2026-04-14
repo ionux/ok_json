@@ -146,53 +146,66 @@ static uint8_t okj_is_utf8_continuation(uint8_t byte)
 }
 
 /*@
-  // 1. Preconditions
+  // Preconditions
   requires src != \null;
   requires advance != \null;
-  
-  // The caller MUST guarantee that the advance pointer is writable.
   requires \valid(advance);
-  
-  // The caller MUST guarantee that it is safe to read up to 4 bytes 
-  // starting at the current position. If they pass a string that ends 
-  // 2 bytes from 'pos', Frama-C will fail the build at the call site!
-  // We also ensure pos doesn't mathematically overflow when adding 3.
-  requires pos <= 65531; 
-  requires \valid_read(src + (pos .. pos + 3));
 
-  // 2. Frame Condition
-  // We only modify the value pointed to by 'advance'
+  // The full buffer is readable for at least `len` bytes.  Unlike the
+  // previous contract which required 4 readable bytes starting at `pos`,
+  // this version makes the validator self-defensive: it inspects `len`
+  // internally and refuses to read past it.  Issue #69 and the follow-up
+  // libFuzzer finds both traced to callers that could not reliably
+  // establish the old "4 readable bytes" precondition for arbitrary input.
+  requires pos < len;
+  requires \valid_read(src + (0 .. len - 1));
+
+  // Frame condition
   assigns *advance;
 
-  // 3. Behaviors
+  // Behaviors
   behavior success:
     assumes src != \null && advance != \null;
-    // The function must return a boolean 0 or 1
     ensures \result == 0 || \result == 1;
-    // If it succeeds, the advance pointer must be set between 1 and 4
     ensures \result == 1 ==> (*advance >= 1 && *advance <= 4);
 
   complete behaviors;
   disjoint behaviors;
 */
-static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_t *advance)
+static uint8_t okj_validate_utf8_sequence(const char *src,
+                                          uint16_t    pos,
+                                          uint16_t    len,
+                                          uint16_t   *advance)
 {
-    /* Validate one UTF-8 scalar-value sequence starting at src[pos].
-     * On success sets *advance (1..4) and returns 1, else returns 0.
+    /* Validate one UTF-8 scalar-value sequence starting at src[pos], with
+     * `len` being the total length of `src`.  On success sets *advance
+     * (1..4) and returns 1; on invalid/truncated input returns 0 without
+     * reading past src[len - 1].
+     *
+     * Every multi-byte read is gated by an explicit bounds check against
+     * `len` so that truncated input (a multi-byte lead at end-of-buffer)
+     * is rejected as invalid, not a heap-buffer-overread.
+     *
      * TODO: Refactoring this to comply with single return rule has
      * really made the cognitive complexity of this function worse.
      * Need to refactor this again to reduce it. -RLM
      */
     uint8_t result = 0U;
 
-    if ((src != NULL) && (advance != NULL))
+    if ((src != NULL) && (advance != NULL) && (pos < len))
     {
-        uint8_t b0 = (uint8_t)src[pos];
+        uint8_t  b0         = (uint8_t)src[pos];
+        uint16_t bytes_left = (uint16_t)(len - pos);
 
         if (b0 <= 0x7FU)
         {
             *advance = 1U;
             result = 1U;
+        }
+        else if (bytes_left < 2U)
+        {
+            /* Need b1 but no byte after the lead is available — truncated. */
+            result = 0U;
         }
         else
         {
@@ -209,6 +222,14 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
                 {
                     result = 0U;
                 }
+            }
+            else if (bytes_left < 3U)
+            {
+                /* Need b2 but fewer than 3 bytes available — truncated or
+                 * the lead byte is in an invalid range (e.g. 0x80..0xC1)
+                 * that the validator can only classify as "not a 2-byte
+                 * sequence" after reading b2. */
+                result = 0U;
             }
             else
             {
@@ -257,6 +278,12 @@ static uint8_t okj_validate_utf8_sequence(const char *src, uint16_t pos, uint16_
                             {
                                 result = 0U;
                             }
+                        }
+                        else if (bytes_left < 4U)
+                        {
+                            /* Need b3 for 4-byte paths (or to reject invalid
+                             * lead bytes in 0x80..0xC1 / 0xF5..0xFF). */
+                            result = 0U;
                         }
                         else
                         {
@@ -1210,54 +1237,16 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                             }
                             else
                             {
-                                /* okj_validate_utf8_sequence's ACSL contract requires
-                                 * \valid_read(src + (pos .. pos + 3)) — 4 readable bytes.
-                                 * The outer while loop only guarantees 1 byte
-                                 * (parser->position < parser->json_len), so we must
-                                 * verify the remaining bytes match what the lead byte
-                                 * demands before calling.  Otherwise, truncated input
-                                 * like {"a":"\xC2 (7 bytes, no NUL) causes a heap-
-                                 * buffer-overread at src[pos+1]. */
-                                uint8_t  lead_byte   = (uint8_t)parser->json[parser->position];
-                                uint16_t bytes_need  = 1U;
-                                uint16_t bytes_avail = (uint16_t)(parser->json_len - parser->position);
-
-                                if (lead_byte >= 0xF0U)
-                                {
-                                    bytes_need = 4U;
-                                }
-                                else if (lead_byte >= 0xE0U)
-                                {
-                                    bytes_need = 3U;
-                                }
-                                else if (lead_byte >= 0x80U)
-                                {
-                                    /* Any byte > 0x7F causes okj_validate_utf8_sequence
-                                     * to unconditionally read src[pos + 1] at line 199
-                                     * BEFORE it classifies the lead byte.  That includes
-                                     * invalid lead bytes in the range 0x80..0xC1 (which
-                                     * the validator ultimately rejects — but only AFTER
-                                     * the continuation-byte read).  So we must ensure at
-                                     * least 2 bytes are available for every non-ASCII
-                                     * byte, not just valid 2-byte leads (>=0xC2).  Without
-                                     * this, input like {"":"&7\x80 (fuzzer-found) reaches
-                                     * the validator with only 1 byte left and triggers a
-                                     * heap-buffer-overread. */
-                                    bytes_need = 2U;
-                                }
-                                else
-                                {
-                                    /* ASCII: 1-byte path inside the validator. */
-                                    bytes_need = 1U;
-                                }
-
-                                if (bytes_avail < bytes_need)
-                                {
-                                    result = OKJ_ERROR_BAD_STRING;
-                                    loop_break = 1U;
-                                }
-                                else if (okj_validate_utf8_sequence(parser->json,
+                                /* okj_validate_utf8_sequence now takes the buffer length
+                                 * and performs its own bounds checks before each
+                                 * continuation-byte read (see contract at its definition).
+                                 * Truncated input like {"a":"\xC2 (multi-byte lead at
+                                 * end of buffer) or fuzzer-found inputs with invalid
+                                 * lead bytes in 0x80..0xC1 / 0xF0..0xFF at EOF are
+                                 * rejected as invalid without a heap-buffer-overread. */
+                                if (okj_validate_utf8_sequence(parser->json,
                                                             parser->position,
+                                                            parser->json_len,
                                                             &utf8_advance) == 0U)
                                 {
                                     result = OKJ_ERROR_BAD_STRING;

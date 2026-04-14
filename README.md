@@ -143,6 +143,10 @@ A full local wiki is available in the [`wiki/`](wiki/) directory:
 ## Known Issues
 - None.
 
+## Security
+
+If you believe you have found a security vulnerability, please do *not* open a public issue.  Instead, follow the private reporting process described in SECURITY.md, including responsible disclosure expectations, reporting guidance, and coordination procedures.
+
 ## AI Assistance Disclosure
 
 Portions of this project were developed with AI-assisted tooling.  AI was used as an engineering support tool for tasks such as brainstorming, code review, debugging, test-cases, documentation, refactoring, etc...  However, all code, tests, and documentation in this repository were reviewed and intentionally selected by me.

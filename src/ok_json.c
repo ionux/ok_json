@@ -845,32 +845,33 @@ static void okj_skip_whitespace(OkJsonParser *parser)
 }
 
 /*@
-  // 1. Preconditions
+  // Preconditions
   //
   // parser may be NULL — we handle that gracefully by returning
-  // OKJ_ERROR_BAD_POINTER.  If non-NULL, the struct must be valid for r/w.
+  // OKJ_ERROR_BAD_POINTER.  If non-NULL, the struct must be valid for r/w
+  // and the json buffer it references must be readable for the full
+  // json_len bytes (otherwise every indexed read inside the inner loops
+  // is undefined behavior — the class of bug Issue #69 reported).
   requires parser == \null || \valid(parser);
-
-  // If parser is non-NULL, the json buffer it references must be readable
-  // for at least json_len bytes.  Without this, every indexed read inside
-  // this function's inner loops (strings, numbers, escapes, keywords) is
-  // undefined behavior — that is exactly the class of bug Issue #69 reported.
   requires parser != \null ==>
              \valid_read(parser->json + (0 .. parser->json_len - 1));
-
-  // position must be within or at the end of the buffer at entry.  Callers
-  // (okj_parse, recursive entry for containers) maintain this invariant.
   requires parser != \null ==> parser->position <= parser->json_len;
-
-  // Token array must be addressable.
   requires parser != \null ==>
              \valid(parser->tokens + (0 .. OKJ_MAX_TOKENS - 1));
 
-  // 2. Frame condition
-  assigns parser == \null ? \nothing : *parser;
+  // Behaviors carry the frame condition — ACSL does not support a ternary
+  // in the assigns clause, so we split the two cases into behaviors.
+  behavior null_parser:
+    assumes parser == \null;
+    assigns \nothing;
 
-  // 3. Postconditions
-  ensures parser != \null ==> parser->position <= parser->json_len;
+  behavior valid_parser:
+    assumes parser != \null;
+    assigns *parser;
+    ensures parser->position <= parser->json_len;
+
+  complete behaviors;
+  disjoint behaviors;
 
   // NOTE: Full WP verification of this function requires extensive loop
   // invariants on the string/number/escape inner loops.  This is tracked
@@ -1229,14 +1230,24 @@ static OkjError okj_parse_value(OkJsonParser *parser)
                                 {
                                     bytes_need = 3U;
                                 }
-                                else if (lead_byte >= 0xC2U)
+                                else if (lead_byte >= 0x80U)
                                 {
+                                    /* Any byte > 0x7F causes okj_validate_utf8_sequence
+                                     * to unconditionally read src[pos + 1] at line 199
+                                     * BEFORE it classifies the lead byte.  That includes
+                                     * invalid lead bytes in the range 0x80..0xC1 (which
+                                     * the validator ultimately rejects — but only AFTER
+                                     * the continuation-byte read).  So we must ensure at
+                                     * least 2 bytes are available for every non-ASCII
+                                     * byte, not just valid 2-byte leads (>=0xC2).  Without
+                                     * this, input like {"":"&7\x80 (fuzzer-found) reaches
+                                     * the validator with only 1 byte left and triggers a
+                                     * heap-buffer-overread. */
                                     bytes_need = 2U;
                                 }
                                 else
                                 {
-                                    /* 1-byte ASCII or an invalid lead byte — the
-                                     * validator will handle these without OOB. */
+                                    /* ASCII: 1-byte path inside the validator. */
                                     bytes_need = 1U;
                                 }
 
@@ -1700,21 +1711,26 @@ void okj_init(OkJsonParser *parser, char *json_string, uint16_t json_len)
 }
 
 /*@
-  // 1. Preconditions
-  requires parser == \null || \valid(parser);
-
   // Same buffer-readability precondition as okj_parse_value: without it,
   // the subordinate reads inside the main dispatch are UB.  This is the
   // contract the public API documents to callers via okj_init's length
   // parameter.
+  requires parser == \null || \valid(parser);
   requires parser != \null ==>
              \valid_read(parser->json + (0 .. parser->json_len - 1));
-
   requires parser != \null ==>
              \valid(parser->tokens + (0 .. OKJ_MAX_TOKENS - 1));
 
-  // 2. Frame condition
-  assigns parser == \null ? \nothing : *parser;
+  behavior null_parser:
+    assumes parser == \null;
+    assigns \nothing;
+
+  behavior valid_parser:
+    assumes parser != \null;
+    assigns *parser;
+
+  complete behaviors;
+  disjoint behaviors;
 
   // NOTE: This function is not yet in the -wp-fct list because fully
   // discharging its WP goals requires loop invariants matching those in

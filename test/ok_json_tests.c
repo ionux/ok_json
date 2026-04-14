@@ -236,6 +236,7 @@ void test_false_as_object_key(void);
  * regression of any of the three OOB reads would be caught. */
 void test_oob_unicode_escape_truncated_no_padding(void);
 void test_oob_utf8_lead_at_eof_no_padding(void);
+void test_oob_utf8_invalid_lead_byte_at_eof(void);
 void test_oob_keyword_truncated_no_padding(void);
 
 /**
@@ -5112,6 +5113,38 @@ void test_oob_utf8_lead_at_eof_no_padding(void)
     printf("test_oob_utf8_lead_at_eof_no_padding passed!\n");
 }
 
+void test_oob_utf8_invalid_lead_byte_at_eof(void)
+{
+    /* libFuzzer-discovered variant of Finding 2: the input "&7\x80 (4 bytes)
+     * has byte 0x80 as the final byte.  0x80 is NOT a valid UTF-8 lead byte
+     * (it's a continuation byte), but okj_validate_utf8_sequence still reads
+     * src[pos + 1] at line 199 for ANY byte > 0x7F before classifying it.
+     *
+     * The original call-site fix only required 2 bytes when lead >= 0xC2,
+     * which let 0x80..0xC1 (invalid leads) slip through with only 1 byte
+     * available, triggering the same OOB read at a different byte range. */
+    size_t len = 4U;
+    char  *buf = (char *)malloc(len);
+    assert(buf != NULL);
+
+    buf[0] = 0x22;         /* " */
+    buf[1] = 0x26;         /* & */
+    buf[2] = 0x37;         /* 7 */
+    buf[3] = (char)0x80;   /* continuation byte masquerading as lead */
+
+    OkJsonParser parser;
+    OkjError     result;
+
+    okj_init(&parser, buf, (uint16_t)len);
+    result = okj_parse(&parser);
+
+    assert(result != OKJ_SUCCESS);
+
+    free(buf);
+
+    printf("test_oob_utf8_invalid_lead_byte_at_eof passed!\n");
+}
+
 void test_oob_keyword_truncated_no_padding(void)
 {
     /* Finding 3: "tr" — 2 bytes, no NUL, no padding.
@@ -5371,6 +5404,7 @@ int main(int argc, char* argv[])
      * These use exact-size malloc'd buffers so ASan catches any regression. */
     test_oob_unicode_escape_truncated_no_padding();
     test_oob_utf8_lead_at_eof_no_padding();
+    test_oob_utf8_invalid_lead_byte_at_eof();
     test_oob_keyword_truncated_no_padding();
 
     printf("All OK_JSON tests passed!\n");

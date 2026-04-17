@@ -81,7 +81,9 @@ The CI workflow (`build-and-test` job) additionally:
 - Runs Cppcheck with the MISRA add-on against the test source, publishing results to the GitHub step summary.
 - Publishes a gcovr line/branch coverage summary to the GitHub step summary.
 
-A separate `fuzz` CI job compiles `test/fuzz_target.c` with Clang libFuzzer + ASan + UBSan and runs the fuzzer for up to 10 seconds per push/PR.
+A separate `fuzz` CI job compiles `test/fuzz_target.c` with Clang libFuzzer + ASan + UBSan and runs the fuzzer for up to 30 seconds per push/PR.
+
+A third `formal-verification` CI job runs Frama-C WP (with `-wp-rte`) inside the official `framac/frama-c:32.0` container to discharge ACSL contracts on a defined set of functions.  Results are published to the GitHub step summary.  Functions not yet covered by WP proofs (primarily `okj_parse` and `okj_parse_value`) are guarded in the interim by the fuzzer harness and ASan regression tests.
 
 ## Extending the project safely
 

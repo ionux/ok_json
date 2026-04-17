@@ -34,7 +34,11 @@ The current external validation results are recorded in `json_compliance_report.
 
 /* 1. Declare a parser and a mutable JSON string */
 OkJsonParser parser;
-char json[] = "{\"temp\": 42, \"unit\": \"C\", \"valid\": true}";
+char json[] = "{"
+    "\"temp\": 42, \"unit\": \"C\", \"valid\": true,"
+    "\"tags\": [\"sensor\", \"indoor\"],"
+    "\"location\": {\"floor\": 3}"
+"}";
 
 /* 2. Initialise and parse */
 okj_init(&parser, json, (uint16_t)(sizeof(json) - 1U));
@@ -62,6 +66,22 @@ char buf[32];
 if (okj_get_string(&parser, "unit", 4U, &unit) == OKJ_SUCCESS) {
     okj_copy_string(&unit, buf, (uint16_t)sizeof(buf)); /* buf == "C\0" */
 }
+
+/* 5. Retrieve array and object values */
+OkJsonArray  tags;
+OkJsonObject location;
+
+if (okj_get_array (&parser, "tags",     4U, &tags)     == OKJ_SUCCESS) {
+    /* tags.count == 2, tags.start points to '[' */
+}
+if (okj_get_object(&parser, "location", 8U, &location) == OKJ_SUCCESS) {
+    /* location.count == 1, location.start points to '{' */
+}
+
+/* 6. Count containers and total tokens */
+uint16_t num_objects  = okj_count_objects(&parser);   /* 2 — root + location */
+uint16_t num_arrays   = okj_count_arrays(&parser);    /* 1 — tags             */
+uint16_t num_elements = okj_count_elements(&parser);  /* total token count    */
 ```
 
 All getter functions return an `OkjError` code and write their result into a caller-supplied struct.  They return an error code (not `OKJ_SUCCESS`) when the key is not found or the value type does not match.
@@ -70,10 +90,10 @@ All getter functions return an `OkjError` code and write their result into a cal
 
 ### Lifecycle
 
-| Function | Description |
-|----------|-------------|
-| `okj_init(parser, json_string, json_len)` | Initialise the parser with a mutable JSON string and its byte length |
-| `okj_parse(parser)` | Tokenise the JSON string; returns `OkjError` |
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `okj_init(parser, json_string, json_len)` | `void` | Initialise the parser with a mutable JSON string and its byte length |
+| `okj_parse(parser)` | `OkjError` | Tokenise the JSON string |
 
 ### Value Getters
 
@@ -98,6 +118,33 @@ Each getter returns `OkjError` and writes its result into a caller-supplied outp
 | `okj_count_objects(parser)` | `uint16_t` | Count all `OKJ_OBJECT` tokens in the parsed result, including nested objects; returns `0` if `parser` is `NULL` |
 | `okj_count_arrays(parser)` | `uint16_t` | Count all `OKJ_ARRAY` tokens in the parsed result, including nested arrays; returns `0` if `parser` is `NULL` |
 | `okj_count_elements(parser)` | `uint16_t` | Return the total token count (equivalent to `parser->token_count`); returns `0` if `parser` is `NULL` |
+
+### Error Codes
+
+All functions returning `OkjError` use the following values:
+
+| Code | Value | Meaning |
+|------|-------|---------|
+| `OKJ_SUCCESS` | 0 | Operation succeeded |
+| `OKJ_ERROR_INVALID_CHARACTER` | 1 | Unexpected character in input |
+| `OKJ_ERROR_SYNTAX` | 2 | Structural syntax error (trailing comma, missing colon, etc.) |
+| `OKJ_ERROR_OVERFLOW` | 3 | Internal numeric overflow |
+| `OKJ_ERROR_UNEXPECTED_END` | 4 | Input ended before all containers were closed |
+| `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | 5 | Token array full; input exceeds `OKJ_MAX_TOKENS` |
+| `OKJ_ERROR_MAX_STR_LEN_EXCEEDED` | 6 | String or key exceeds `OKJ_MAX_STRING_LEN` bytes |
+| `OKJ_ERROR_BAD_POINTER` | 7 | `NULL` pointer passed where a non-`NULL` argument is required |
+| `OKJ_ERROR_BAD_NUMBER` | 8 | Key not found or value is not a number |
+| `OKJ_ERROR_BAD_OBJECT` | 9 | Key not found, value is not an object, or member count exceeds `OKJ_MAX_OBJECT_SIZE` |
+| `OKJ_ERROR_BAD_STRING` | 10 | Key not found or value is not a string |
+| `OKJ_ERROR_BAD_ARRAY` | 11 | Key not found, value is not an array, or element count exceeds `OKJ_MAX_ARRAY_SIZE` |
+| `OKJ_ERROR_BAD_BOOLEAN` | 12 | Key not found or value is not a boolean |
+| `OKJ_ERROR_NULL_PARSER_OBJ` | 13 | Parser pointer is `NULL` |
+| `OKJ_ERROR_INVALID_TYPE_ENUM` | 14 | Unrecognised `OkJsonType` value encountered |
+| `OKJ_ERROR_NO_FREE_SPACE` | 15 | No free slot remaining in the token array |
+| `OKJ_ERROR_PARSING_FAILED` | 16 | General parse failure |
+| `OKJ_ERROR_MAX_JSON_LEN_EXCEEDED` | 17 | Input exceeds `OKJ_MAX_JSON_LEN` bytes |
+| `OKJ_ERROR_MAX_DEPTH_EXCEEDED` | 18 | Nesting depth exceeds `OKJ_MAX_DEPTH` |
+| `OKJ_ERROR_BRACKET_MISMATCH` | 19 | Mismatched opening and closing brackets |
 
 ### Debug (compile with `-DOK_JSON_DEBUG`)
 

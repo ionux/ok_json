@@ -64,26 +64,26 @@ All result/failure codes returned by parse and getter routines:
 
 | Code | Value | Meaning |
 |---|---|---|
-| `OKJ_SUCCESS` | 0 | Successful operation |
-| `OKJ_ERROR_INVALID_CHARACTER` | 1 | Unexpected character encountered |
-| `OKJ_ERROR_SYNTAX` | 2 | Structural syntax error |
+| `OKJ_SUCCESS` | 0 | Operation succeeded |
+| `OKJ_ERROR_INVALID_CHARACTER` | 1 | Unexpected character in input |
+| `OKJ_ERROR_SYNTAX` | 2 | Structural syntax error (trailing comma, missing colon, etc.) |
 | `OKJ_ERROR_OVERFLOW` | 3 | Internal numeric overflow |
-| `OKJ_ERROR_UNEXPECTED_END` | 4 | Input ended prematurely |
-| `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | 5 | Token array full (`OKJ_MAX_TOKENS`) |
-| `OKJ_ERROR_MAX_STR_LEN_EXCEEDED` | 6 | String exceeds `OKJ_MAX_STRING_LEN` |
-| `OKJ_ERROR_BAD_POINTER` | 7 | Unexpected NULL pointer argument |
-| `OKJ_ERROR_BAD_NUMBER` | 8 | Malformed numeric literal |
-| `OKJ_ERROR_BAD_OBJECT` | 9 | Malformed object |
-| `OKJ_ERROR_BAD_STRING` | 10 | Malformed string |
-| `OKJ_ERROR_BAD_ARRAY` | 11 | Malformed array |
-| `OKJ_ERROR_BAD_BOOLEAN` | 12 | Malformed boolean literal |
-| `OKJ_ERROR_NULL_PARSER_OBJ` | 13 | Parser pointer is NULL |
-| `OKJ_ERROR_INVALID_TYPE_ENUM` | 14 | Unrecognised `OkJsonType` value |
-| `OKJ_ERROR_NO_FREE_SPACE` | 15 | No space left in token array |
+| `OKJ_ERROR_UNEXPECTED_END` | 4 | Input ended before all containers were closed |
+| `OKJ_ERROR_MAX_TOKENS_EXCEEDED` | 5 | Token array full; input exceeds `OKJ_MAX_TOKENS` |
+| `OKJ_ERROR_MAX_STR_LEN_EXCEEDED` | 6 | String or key exceeds `OKJ_MAX_STRING_LEN` bytes |
+| `OKJ_ERROR_BAD_POINTER` | 7 | `NULL` pointer passed where a non-`NULL` argument is required |
+| `OKJ_ERROR_BAD_NUMBER` | 8 | Key not found or value is not a number |
+| `OKJ_ERROR_BAD_OBJECT` | 9 | Key not found, value is not an object, or member count exceeds `OKJ_MAX_OBJECT_SIZE` |
+| `OKJ_ERROR_BAD_STRING` | 10 | Key not found or value is not a string |
+| `OKJ_ERROR_BAD_ARRAY` | 11 | Key not found, value is not an array, or element count exceeds `OKJ_MAX_ARRAY_SIZE` |
+| `OKJ_ERROR_BAD_BOOLEAN` | 12 | Key not found or value is not a boolean |
+| `OKJ_ERROR_NULL_PARSER_OBJ` | 13 | Parser pointer is `NULL` |
+| `OKJ_ERROR_INVALID_TYPE_ENUM` | 14 | Unrecognised `OkJsonType` value encountered |
+| `OKJ_ERROR_NO_FREE_SPACE` | 15 | No free slot remaining in the token array |
 | `OKJ_ERROR_PARSING_FAILED` | 16 | General parse failure |
-| `OKJ_ERROR_MAX_JSON_LEN_EXCEEDED` | 17 | Input exceeds `OKJ_MAX_JSON_LEN` |
+| `OKJ_ERROR_MAX_JSON_LEN_EXCEEDED` | 17 | Input exceeds `OKJ_MAX_JSON_LEN` bytes |
 | `OKJ_ERROR_MAX_DEPTH_EXCEEDED` | 18 | Nesting exceeds `OKJ_MAX_DEPTH` |
-| `OKJ_ERROR_BRACKET_MISMATCH` | 19 | Mismatched opening/closing brackets |
+| `OKJ_ERROR_BRACKET_MISMATCH` | 19 | Mismatched opening and closing brackets |
 
 ## Compile-time and const limits
 

@@ -1,6 +1,6 @@
 # OK_JSON Wiki
 
-Welcome to the project wiki for **OK_JSON**, a small, dependency-minimal JSON parser for C99 systems.
+Welcome to the project wiki for **OK_JSON**, a simple, light, clean, fully tested, RFC 8259-compliant and MISRA C:2012-compliant JSON parser suitable for embedded, memory-constrained, and safety-critical projects. It is written in pure C99 for maximum portability with no external library dependencies.
 
 This wiki is intended to serve as a practical replacement for a hosted project wiki and gathers architecture, API, usage, and development guidance in one place.
 
